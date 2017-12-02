@@ -1,5 +1,5 @@
 import unittest
-from bandits import *
+from bandits.ucb_agent import *
 
 class TestUCBAgent(unittest.TestCase):
 
@@ -75,6 +75,13 @@ class TestUCBAgent(unittest.TestCase):
         self.assertTrue(np.isclose(estimates, expected).all())
 
 
+    def test_three_armed_bandit_where_first_arm_always_succeeds(self):
+        n_actions = 3
+        agent = UCB1Agent(n_actions)
+        actions = [None,0,1,2,0,0,0,0,1,2,0,0,0,0,0,0,0,0,1,2,0,0]
+        rewards = [None,1,0,0,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,1,1]
+        for t in range(len(actions) - 1):
+            self.assertEqual(actions[t+1], agent.handle(action=actions[t], observation=None, reward=rewards[t], done=False, info={}))
     def test_three_armed_bandit_where_middle_arm_always_succeeds(self):
         n_actions = 3
         agent = UCB1Agent(n_actions)
@@ -83,14 +90,13 @@ class TestUCBAgent(unittest.TestCase):
         for t in range(len(actions) - 1):
             self.assertEqual(actions[t+1], agent.handle(action=actions[t], observation=None, reward=rewards[t], done=False, info={}))
 
-class TestBandit(unittest.TestCase):
-
-    def test_optimal_action(self):
-        self.assertEqual(0, Bandit([1.0, 1.0, 1.0]).optimal_action())
-        self.assertEqual(0, Bandit([1.0, 0.0, 0.0]).optimal_action())
-        self.assertEqual(1, Bandit([0.0, 2.0, 0.0]).optimal_action())
-        self.assertEqual(2, Bandit([1.0, 2.0, 6.0]).optimal_action())
-
+    def test_three_armed_bandit_where_last_arm_always_succeeds(self):
+        n_actions = 3
+        agent = UCB1Agent(n_actions)
+        actions = [None,0,1,2,2,2,2,2,0,1,2,2,2,2,2,2,2,2,0,1,2,2]
+        rewards = [None,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,1,1]
+        for t in range(len(actions) - 1):
+            self.assertEqual(actions[t+1], agent.handle(action=actions[t], observation=None, reward=rewards[t], done=False, info={}))
 
 
 if __name__ == '__main__':

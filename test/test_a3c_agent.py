@@ -35,20 +35,28 @@ class TestOptimizer(unittest.TestCase):
 
 class TestA3CAgent(unittest.TestCase):
 
-    def test_act_greedy(self):
+    def test_act_deterministically_greedy(self):
         brain = mock.Mock()
         brain.configure_mock(**{
             'predict_action.return_value': np.array([1.0, 0.0, 0.0, 0.0]),
             })
         agent = A3CAgent(4, brain)
-        self.assertEqual(0, agent.act(observation=np.array([0.0, 0.0])))
+        actions = np.zeros(4)
+        for i in range(100):
+            a = agent.act(observation=np.array([0.0, 0.0]))
+            actions[a] += 1
+        self.assertEqual(100, actions[0])
 
         brain = mock.Mock()
         brain.configure_mock(**{
             'predict_action.return_value': np.array([0.0, 0.0, 0.0, 1.0]),
             })
         agent = A3CAgent(4, brain)
-        self.assertEqual(3, agent.act(observation=np.array([0.0, 0.0])))
+        actions = np.zeros(4)
+        for i in range(100):
+            a = agent.act(observation=np.array([0.0, 0.0]))
+            actions[a] += 1
+        self.assertEqual(100, actions[3])
 
 
     def test_act_by_fully_exploring(self):
@@ -59,9 +67,10 @@ class TestA3CAgent(unittest.TestCase):
         agent = A3CAgent(4, brain, epsilon=1.0)
         actions = np.zeros(4)
         for i in range(100):
-            actions = actions + agent.act(observation=np.array([0.0, 0.0]))
+            a = agent.act(observation=np.array([0.0, 0.0]))
+            actions[a] += 1
 
-        self.assertTrue((actions > 2).all())
+        self.assertTrue((actions > 10).all())
 
     def test_push_discounted_rewards_to_brain_with_gamma_1(self):
         brain = mock.Mock()

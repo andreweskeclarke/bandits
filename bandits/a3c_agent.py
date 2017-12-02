@@ -15,6 +15,7 @@ class A3CAgent(object):
         self.brain = brain
         self.epsilon = epsilon
         self.gamma = gamma
+        self.memory = []
 
     def act(self, observation=None):
         if random.random() < self.epsilon:

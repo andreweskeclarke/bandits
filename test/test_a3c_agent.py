@@ -70,7 +70,7 @@ class TestA3CAgent(unittest.TestCase):
         obs2 = np.array([0, 1])
         obs3 = np.array([1, 0])
         action1 = np.array([0, 1])
-        action2 = np.array([0, 1])
+        action2 = np.array([1, 0])
         action3 = np.array([0, 1])
         reward1 = 1
         reward2 = 1
@@ -104,7 +104,7 @@ class TestA3CAgent(unittest.TestCase):
         obs2 = np.array([0, 1])
         obs3 = np.array([1, 0])
         action1 = np.array([0, 1])
-        action2 = np.array([0, 1])
+        action2 = np.array([1, 0])
         action3 = np.array([0, 1])
         reward1 = 1
         reward2 = 1
@@ -129,6 +129,42 @@ class TestA3CAgent(unittest.TestCase):
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
         self.assertTrue(np.equal(agent._none_state(), brain.push_training_example.call_args_list[2][1]['next_observation']).all())
         self.assertTrue(np.equal(action3, brain.push_training_example.call_args_list[2][1]['action']).all())
+        self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
+
+    def test_handle_transitions_with_end_of_episode(self):
+        brain = mock.Mock()
+        agent = A3CAgent(2, brain, gamma=0.5)
+        obs1 = np.array([1, 1])
+        obs2 = np.array([0, 1])
+        obs3 = np.array([1, 0])
+        action1 = 1
+        action2 = 0
+        action3 = 1
+        expected_action1 = np.array([0, 1])
+        expected_action2 = np.array([1, 0])
+        expected_action3 = np.array([0, 1])
+        reward1 = 1
+        reward2 = 1
+        reward3 = 1
+
+        agent.handle_transition(observation=obs1, action=action1, reward=reward1, next_observation=obs2)
+        agent.handle_transition(observation=obs2, action=action2, reward=reward2, next_observation=obs3)
+        brain.push_training_example.assert_not_called()
+        agent.handle_transition(observation=obs3, action=action3, reward=reward3, next_observation=None)
+
+        self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
+        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
+        self.assertTrue(np.equal(expected_action1, brain.push_training_example.call_args_list[0][1]['action']).all())
+        self.assertEqual(1.75, brain.push_training_example.call_args_list[0][1]['reward'])
+
+        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
+        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
+        self.assertTrue(np.equal(expected_action2, brain.push_training_example.call_args_list[1][1]['action']).all())
+        self.assertEqual(1.5, brain.push_training_example.call_args_list[1][1]['reward'])
+
+        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
+        self.assertTrue(np.equal(agent._none_state(), brain.push_training_example.call_args_list[2][1]['next_observation']).all())
+        self.assertTrue(np.equal(expected_action3, brain.push_training_example.call_args_list[2][1]['action']).all())
         self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
 
 

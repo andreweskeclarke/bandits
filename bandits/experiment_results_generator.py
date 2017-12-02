@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 N_EPISODES_PER_TEST=100
-EPISODE_LENGTH=100
+EPISODE_LENGTH=200
 
 
 def build_experiment_path(py_file):
@@ -20,9 +20,9 @@ class ExperimentResultsGenerator(object):
     def  __init__(self):
         pass
 
-    def _get_env_for_current_step(self, step, envs):
-        step = max(0, min(EPISODE_LENGTH-1, step))
-        percent_done = float(step) / float(EPISODE_LENGTH)
+    def _get_env_for_current_step(self, step, envs, episode_length=EPISODE_LENGTH):
+        step = max(0, min(episode_length-1, step))
+        percent_done = float(step) / float(episode_length)
         current_env_index = math.floor(percent_done * float(len(envs)))
         current_env_index = max(0, min(len(envs)-1, current_env_index))
         return envs[current_env_index]

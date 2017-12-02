@@ -16,39 +16,39 @@ class TestExperimentResultsGenerator(unittest.TestCase):
 
     def test_get_current_env_for_current_step(self):
         experiment = ExperimentResultsGenerator()
-        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=EPISODE_LENGTH, envs=['A']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=EPISODE_LENGTH*10, envs=['A']))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=100, envs=['A'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=1000, envs=['A'], episode_length=100))
 
-        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=2, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=46, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=47, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=48, envs=['A', 'B']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=49, envs=['A', 'B']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=50, envs=['A', 'B']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=51, envs=['A', 'B']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=EPISODE_LENGTH, envs=['A', 'B']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=EPISODE_LENGTH*10, envs=['A', 'B']))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=2, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=46, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=47, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=48, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=49, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=50, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=51, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=100, envs=['A', 'B'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=1000, envs=['A', 'B'], episode_length=100))
 
-        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A', 'B', 'C']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A', 'B', 'C']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A', 'B', 'C']))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=33, envs=['A', 'B', 'C']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=34, envs=['A', 'B', 'C']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=65, envs=['A', 'B', 'C']))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=66, envs=['A', 'B', 'C']))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=67, envs=['A', 'B', 'C']))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=100, envs=['A', 'B', 'C']))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=EPISODE_LENGTH, envs=['A', 'B', 'C']))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=EPISODE_LENGTH*10, envs=['A', 'B', 'C']))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('A', experiment._get_env_for_current_step(step=33, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=34, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=65, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('B', experiment._get_env_for_current_step(step=66, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('C', experiment._get_env_for_current_step(step=67, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('C', experiment._get_env_for_current_step(step=100, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('C', experiment._get_env_for_current_step(step=100, envs=['A', 'B', 'C'], episode_length=100))
+        self.assertEqual('C', experiment._get_env_for_current_step(step=1000, envs=['A', 'B', 'C'], episode_length=100))
 
     def test_single_bandit_environment(self):
-        n_episodes = 10
+        n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
             'handle.return_value': 0
@@ -67,7 +67,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         self.assertEqual(env.reset.call_count, n_episodes)
 
     def test_single_bandit_environment_as_list(self):
-        n_episodes = 10
+        n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
             'handle.return_value': 0
@@ -86,7 +86,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         self.assertEqual(env.reset.call_count, n_episodes)
 
     def test_two_bandit_environment(self):
-        n_episodes = 10
+        n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
             'handle.return_value': 0
@@ -111,8 +111,8 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         self.assertEqual(env1.reset.call_count, n_episodes)
         self.assertEqual(env2.reset.call_count, n_episodes)
 
-    def test_three_bandit_environment(self):
-        n_episodes = 10
+    def test_four_bandit_environment(self):
+        n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
             'handle.return_value': 0
@@ -132,20 +132,27 @@ class TestExperimentResultsGenerator(unittest.TestCase):
             'step.return_value': (None, 0, False, {}),
             'optimal_action.return_value': 0,
             })
+        env4 = mock.Mock()
+        env4.configure_mock(**{
+            'step.return_value': (None, 0, False, {}),
+            'optimal_action.return_value': 0,
+            })
         experiment = ExperimentResultsGenerator()
-        experiment.run(agent=agent, env=[env1, env2, env3], n_episodes=n_episodes)
+        experiment.run(agent=agent, env=[env1, env2, env3, env4], n_episodes=n_episodes)
 
         self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env1.step.call_count, 0.34 * EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env2.step.call_count, 0.33 * EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env3.step.call_count, 0.33 * EPISODE_LENGTH*n_episodes)
+        self.assertEqual(env1.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
+        self.assertEqual(env2.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
+        self.assertEqual(env3.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
+        self.assertEqual(env4.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
         self.assertEqual(agent.reset.call_count, n_episodes)
         self.assertEqual(env1.reset.call_count, n_episodes)
         self.assertEqual(env2.reset.call_count, n_episodes)
         self.assertEqual(env3.reset.call_count, n_episodes)
+        self.assertEqual(env4.reset.call_count, n_episodes)
 
     def test_results_from_experiment(self):
-        n_episodes = 10
+        n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
             'handle.return_value': np.int64(0)

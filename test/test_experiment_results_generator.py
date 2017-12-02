@@ -63,6 +63,8 @@ class TestExperimentResultsGenerator(unittest.TestCase):
 
         self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env.step.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.reset.call_count, n_episodes)
+        self.assertEqual(env.reset.call_count, n_episodes)
 
     def test_single_bandit_environment_as_list(self):
         n_episodes = 10
@@ -80,6 +82,8 @@ class TestExperimentResultsGenerator(unittest.TestCase):
 
         self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env.step.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.reset.call_count, n_episodes)
+        self.assertEqual(env.reset.call_count, n_episodes)
 
     def test_two_bandit_environment(self):
         n_episodes = 10
@@ -103,6 +107,9 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env1.step.call_count, EPISODE_LENGTH*n_episodes / 2.0)
         self.assertEqual(env2.step.call_count, EPISODE_LENGTH*n_episodes / 2.0)
+        self.assertEqual(agent.reset.call_count, n_episodes)
+        self.assertEqual(env1.reset.call_count, n_episodes)
+        self.assertEqual(env2.reset.call_count, n_episodes)
 
     def test_three_bandit_environment(self):
         n_episodes = 10
@@ -132,6 +139,10 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         self.assertEqual(env1.step.call_count, 0.34 * EPISODE_LENGTH*n_episodes)
         self.assertEqual(env2.step.call_count, 0.33 * EPISODE_LENGTH*n_episodes)
         self.assertEqual(env3.step.call_count, 0.33 * EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.reset.call_count, n_episodes)
+        self.assertEqual(env1.reset.call_count, n_episodes)
+        self.assertEqual(env2.reset.call_count, n_episodes)
+        self.assertEqual(env3.reset.call_count, n_episodes)
 
     def test_results_from_experiment(self):
         n_episodes = 10

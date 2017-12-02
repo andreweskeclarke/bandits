@@ -10,6 +10,9 @@ class UCB1Agent(object):
         self.memory.append({'action': action, 'reward': reward})
         return np.argmax(self.upper_confidence_bounds(self.memory, self.n_actions))
 
+    def reset(self):
+        self.memory = []
+
     def upper_confidence_bounds(self, memory, n_actions):
         # For UCB1:
         # https://www.cs.bham.ac.uk/internal/courses/robotics/lectures/ucb1.pdf

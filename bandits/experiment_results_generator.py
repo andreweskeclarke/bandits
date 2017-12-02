@@ -39,6 +39,9 @@ class ExperimentResultsGenerator(object):
 
         self.results = {}
         for i_episode in range(n_episodes):
+            agent.reset()
+            for e in env:
+                e.reset()
             episode_results = {
                     'action': np.zeros(EPISODE_LENGTH).tolist(),
                     'reward': np.zeros(EPISODE_LENGTH).tolist(),
@@ -53,6 +56,7 @@ class ExperimentResultsGenerator(object):
                 episode_results['action'][i_step] = action
                 episode_results['reward'][i_step] = reward
                 episode_results['optimal_action'][i_step] = optimal_action
+                current_env.render()
 
             self.results[i_episode] = episode_results
 

@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class Bandit(object):
 
@@ -11,7 +12,7 @@ class Bandit(object):
         return np.argmax(self.arm_probabilities)
 
     def step(self, action):
-        obesrvation = None
+        observation = None
         reward = np.random.binomial(1, self.arm_probabilities[action])
         done = False
         info = {}
@@ -27,17 +28,17 @@ class Bandit(object):
         return self.n_arms
 
 def fixed_bandit():
-    return Bandit(np.random.shuffle(np.array([0.0, 1.0])))
+    return Bandit(random.sample([0.0, 1.0], 2))
 
 def easy_bandit():
-    return Bandit(np.random.shuffle(np.array([0.1, 0.9])))
+    return Bandit(random.sample([0.1, 0.9], 2))
 
 def medium_bandit():
-    return Bandit(np.random.shuffle(np.array([0.25, 0.75])))
+    return Bandit(random.sample([0.25, 0.75], 2))
 
 def hard_bandit():
-    return Bandit(np.random.shuffle(np.array([0.4, 0.6])))
+    return Bandit(random.sample([0.4, 0.6], 2))
 
 def random_bandit():
-    return Bandit(np.random.shuffle(np.array([0.5, 0.5])))
+    return Bandit(random.sample([0.5, 0.5], 2))
 

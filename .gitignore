@@ -136,3 +136,5 @@ Session.vim
 tags
 
 # End of https://www.gitignore.io/api/git,vim,linux,python
+
+ucb_experiments/**/*.json

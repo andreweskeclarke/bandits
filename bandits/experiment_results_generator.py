@@ -9,9 +9,10 @@ EPISODE_LENGTH=100
 
 
 def build_experiment_path(py_file):
-    this_python_files_directory = os.path.dirname(os.path.realpath(py_file))
-    experiment_directory_name = re.sub('.py', '/', py_file)
-    path = os.path.join(this_python_files_directory, experiment_directory_name)
+    base_directory = os.path.dirname(os.path.realpath(py_file))
+    filename = os.path.basename(os.path.realpath(py_file))
+    experiment_directory = re.sub('.py', '/', filename)
+    path = os.path.join(base_directory, experiment_directory)
     return path
 
 
@@ -39,9 +40,9 @@ class ExperimentResultsGenerator(object):
         self.results = {}
         for i_episode in range(n_episodes):
             episode_results = {
-                    'action': np.zeros(EPISODE_LENGTH),
-                    'reward': np.zeros(EPISODE_LENGTH),
-                    'optimal_action': np.zeros(EPISODE_LENGTH),
+                    'action': np.zeros(EPISODE_LENGTH).tolist(),
+                    'reward': np.zeros(EPISODE_LENGTH).tolist(),
+                    'optimal_action': np.zeros(EPISODE_LENGTH).tolist(),
                     }
             for i_step in range(EPISODE_LENGTH):
                 current_env = self._get_env_for_current_step(i_step, env) 
@@ -61,5 +62,17 @@ class ExperimentResultsGenerator(object):
             os.makedirs(save_dir)
 
         with open(results_output_path, 'w') as out:
-            json.dump(self.results, out)
+            json.dump(self.results, out, cls=NumpyEncoder)
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(MyEncoder, self).default(obj)
 

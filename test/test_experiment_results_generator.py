@@ -8,8 +8,11 @@ from bandits.experiment_results_generator import *
 class TestExperimentResultsGenerator(unittest.TestCase):
 
     def test_build_experiment_path(self):
-        import os
-        self.assertEqual('/home/andrew/src/bandits/test/test_experiment_results_generator/', build_experiment_path(__file__))
+        py_file = __file__
+        self.assertEqual('/home/andrew/src/bandits/test/test_experiment_results_generator/', build_experiment_path(py_file))
+
+        py_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../ucb_experiments/ucb1_agent_with_easy_bandit_env.py')
+        self.assertEqual('/home/andrew/src/bandits/ucb_experiments/ucb1_agent_with_easy_bandit_env/', build_experiment_path(py_file))
 
     def test_get_current_env_for_current_step(self):
         experiment = ExperimentResultsGenerator()
@@ -130,6 +133,23 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         self.assertEqual(env2.step.call_count, 0.33 * EPISODE_LENGTH*n_episodes)
         self.assertEqual(env3.step.call_count, 0.33 * EPISODE_LENGTH*n_episodes)
 
+    def test_results_from_experiment(self):
+        n_episodes = 10
+        agent = mock.Mock()
+        agent.configure_mock(**{
+            'handle.return_value': np.int64(0)
+            })
+        env = mock.Mock()
+        env.configure_mock(**{
+            'step.return_value': (None, np.float(0.0), False, {}),
+            'optimal_action.return_value': np.int64(0),
+            })
+        experiment = ExperimentResultsGenerator()
+        experiment.run(agent=agent, env=env, n_episodes=n_episodes)
+
+        converted_output = json.dumps(experiment.results, cls=NumpyEncoder)
+        # Really just want to ensure this doesnt blow up
+        self.assertTrue(converted_output is not None)
 
 class TestExperimentResultsGeneratorOutput(unittest.TestCase):
 

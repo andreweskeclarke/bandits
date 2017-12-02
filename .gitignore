@@ -137,7 +137,5 @@ tags
 
 # End of https://www.gitignore.io/api/git,vim,linux,python
 
-ucb_single_bandit_experiments/**/*.json
-ucb_single_bandit_experiments/**/*.png
-ucb_two_bandit_experiments/**/*.json
-ucb_two_bandit_experiments/**/*.png
+experiments/**/*.json
+experiments/**/*.png

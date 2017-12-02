@@ -33,6 +33,7 @@ class ExperimentResultsGenerator(object):
 
         action = None
         observation = None
+        next_observation = None
         reward = 0
         done = False
         info = {}
@@ -48,10 +49,16 @@ class ExperimentResultsGenerator(object):
                     'optimal_action': np.zeros(EPISODE_LENGTH).tolist(),
                     }
             for i_step in range(EPISODE_LENGTH):
+                observation = next_observation
                 current_env = self._get_env_for_current_step(i_step, env) 
-                action = agent.handle(action=action, observation=observation, reward=reward, done=done, info=info)
+                action = agent.act(observation=observation)
                 optimal_action = current_env.optimal_action()
-                observation, reward, done, info = current_env.step(action)
+                next_observation, reward, done, info = current_env.step(action)
+                agent.handle_transition(
+                        observation=observation,
+                        action=action,
+                        reward=reward,
+                        next_observation=next_observation)
 
                 episode_results['action'][i_step] = action
                 episode_results['reward'][i_step] = reward

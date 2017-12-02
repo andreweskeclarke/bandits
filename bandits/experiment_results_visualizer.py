@@ -12,15 +12,32 @@ class ExperimentResultsVisualization(object):
     def __init__(self):
         pass
 
-    def render_regrets(self, results_path, plot_title):
+    def _render_timeseries(self, data, ylabel, plot_title, save_path):
         plt.clf()
+        data = np.array(data)
+        ts_plot = sns.tsplot(data=data, ci=[68,95], color='m')
+        axes = ts_plot.axes
+        axes.set_ylim(0,1)
+        axes.set_title(plot_title)
+        axes.set_ylabel('% Regret')
+        axes.set_xlabel('nth step')
+        ts_plot.get_figure().savefig(save_path)
+
+    def _load_results(self, results_path):
         results = None
         directory = os.path.dirname(results_path)
         with open(results_path, 'r') as f:
             results = json.load(f)
         if results is None:
             raise ValueError('No results file! (%s)' % results_path)
+        return results
 
+    def _save_path(self, results_path, fig_filename):
+        directory = os.path.dirname(results_path)
+        save_path = os.path.join(directory, fig_filename)
+
+    def render_regrets(self, results_path, plot_title):
+        results = self._load_results(results_path)
         regrets = np.zeros((experiment_results_generator.N_EPISODES_PER_TEST, experiment_results_generator.EPISODE_LENGTH))
         i = 0
         for key, experiment_results in results.items():
@@ -28,18 +45,24 @@ class ExperimentResultsVisualization(object):
             optimal_actions = np.array(experiment_results['optimal_action'])
             regrets[i] = np.not_equal(actions, optimal_actions)
             i += 1
+        self._render_timeseries(
+                regrets, 
+                '% Regret', 
+                plot_title, 
+                self._save_path(results_path, 'regrets_plot.png'))
 
-        regrets = np.array(regrets)
-        ts_plot = sns.tsplot(data=regrets, ci=[68,95], color='m')
-        axes = ts_plot.axes
-        axes.set_ylim(0,1)
-        axes.set_title(plot_title)
-        axes.set_ylabel('% Regret')
-        axes.set_xlabel('nth step')
-
-        regrets_plot_path = os.path.join(directory, 'regrets_plot.png')
-        ts_plot.get_figure().savefig(regrets_plot_path)
-        # ts_plot.show()
+    def render_rewards(self, results_path, plot_title):
+        results = self._load_results(results_path)
+        rewards = np.zeros((experiment_results_generator.N_EPISODES_PER_TEST, experiment_results_generator.EPISODE_LENGTH))
+        i = 0
+        for key, experiment_results in results.items():
+            rewards[i] = experiment_results['reward']
+            i += 1
+        self.render_timeseries(
+                rewards, 
+                'Reward', 
+                plot_title, 
+                self._save_path(results_path, 'rewards_plot.png'))
 
 
 if __name__ == '__main__':

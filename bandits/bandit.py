@@ -15,8 +15,8 @@ class Bandit(object):
         return np.argmax(self.arm_probabilities)
 
     def step(self, action):
-        observation = None
-        reward = np.random.binomial(1, self.arm_probabilities[action])
+        reward = np.random.binomial(1, self.arm_probabilities[int(action)])
+        observation = np.array([action, reward])
         done = False
         info = {}
         return observation, reward, done, info

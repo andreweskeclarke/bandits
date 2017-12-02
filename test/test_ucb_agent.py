@@ -81,14 +81,31 @@ class TestUCBAgent(unittest.TestCase):
         actions = [None,0,1,2,0,0,0,0,1,2,0,0,0,0,0,0,0,0,1,2,0,0]
         rewards = [None,1,0,0,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,1,1]
         for t in range(len(actions) - 1):
-            self.assertEqual(actions[t+1], agent.handle(action=actions[t], observation=None, reward=rewards[t], done=False, info={}))
+            self.assertEqual(
+                    actions[t+1],
+                    agent.act(observation=np.array([actions[t], rewards[t]])))
+            agent.handle_transition(
+                    observation=np.array([actions[t], rewards[t]]),
+                    action=actions[t+1],
+                    reward=rewards[t+1],
+                    next_observation=np.array([actions[t+1], rewards[t+1]])
+                    )
+
     def test_three_armed_bandit_where_middle_arm_always_succeeds(self):
         n_actions = 3
         agent = UCB1Agent(n_actions)
         actions = [None,0,1,2,1,1,1,1,0,2,1,1,1,1,1,1,1,1,0,2,1,1]
         rewards = [None,0,1,0,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,1,1]
         for t in range(len(actions) - 1):
-            self.assertEqual(actions[t+1], agent.handle(action=actions[t], observation=None, reward=rewards[t], done=False, info={}))
+            self.assertEqual(
+                    actions[t+1],
+                    agent.act(observation=np.array([actions[t], rewards[t]])))
+            agent.handle_transition(
+                    observation=np.array([actions[t], rewards[t]]),
+                    action=actions[t+1],
+                    reward=rewards[t+1],
+                    next_observation=np.array([actions[t+1], rewards[t+1]])
+                    )
 
     def test_three_armed_bandit_where_last_arm_always_succeeds(self):
         n_actions = 3
@@ -96,7 +113,15 @@ class TestUCBAgent(unittest.TestCase):
         actions = [None,0,1,2,2,2,2,2,0,1,2,2,2,2,2,2,2,2,0,1,2,2]
         rewards = [None,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,1,1]
         for t in range(len(actions) - 1):
-            self.assertEqual(actions[t+1], agent.handle(action=actions[t], observation=None, reward=rewards[t], done=False, info={}))
+            self.assertEqual(
+                    actions[t+1],
+                    agent.act(observation=np.array([actions[t], rewards[t]])))
+            agent.handle_transition(
+                    observation=np.array([actions[t], rewards[t]]),
+                    action=actions[t+1],
+                    reward=rewards[t+1],
+                    next_observation=np.array([actions[t+1], rewards[t+1]])
+                    )
 
 
 if __name__ == '__main__':

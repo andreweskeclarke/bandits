@@ -51,7 +51,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
-            'handle.return_value': 0
+            'act.return_value': 0
             })
         env = mock.Mock()
         env.configure_mock(**{
@@ -61,7 +61,8 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         experiment = ExperimentResultsGenerator()
         experiment.run(agent=agent, env=env, n_episodes=n_episodes)
 
-        self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.handle_transition.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env.step.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(agent.reset.call_count, n_episodes)
         self.assertEqual(env.reset.call_count, n_episodes)
@@ -70,7 +71,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
-            'handle.return_value': 0
+            'act.return_value': 0
             })
         env = mock.Mock()
         env.configure_mock(**{
@@ -80,7 +81,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         experiment = ExperimentResultsGenerator()
         experiment.run(agent=agent, env=[env], n_episodes=n_episodes)
 
-        self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env.step.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(agent.reset.call_count, n_episodes)
         self.assertEqual(env.reset.call_count, n_episodes)
@@ -89,7 +90,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
-            'handle.return_value': 0
+            'act.return_value': 0
             })
         env1 = mock.Mock()
         env1.configure_mock(**{
@@ -104,7 +105,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         experiment = ExperimentResultsGenerator()
         experiment.run(agent=agent, env=[env1, env2], n_episodes=n_episodes)
 
-        self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env1.step.call_count, EPISODE_LENGTH*n_episodes / 2.0)
         self.assertEqual(env2.step.call_count, EPISODE_LENGTH*n_episodes / 2.0)
         self.assertEqual(agent.reset.call_count, n_episodes)
@@ -115,7 +116,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
-            'handle.return_value': 0
+            'act.return_value': 0
             })
         env1 = mock.Mock()
         env1.configure_mock(**{
@@ -140,7 +141,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         experiment = ExperimentResultsGenerator()
         experiment.run(agent=agent, env=[env1, env2, env3, env4], n_episodes=n_episodes)
 
-        self.assertEqual(agent.handle.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
         self.assertEqual(env1.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
         self.assertEqual(env2.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
         self.assertEqual(env3.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
@@ -155,7 +156,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         n_episodes = 3
         agent = mock.Mock()
         agent.configure_mock(**{
-            'handle.return_value': np.int64(0)
+            'act.return_value': np.int64(0)
             })
         env = mock.Mock()
         env.configure_mock(**{

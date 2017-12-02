@@ -6,9 +6,11 @@ class UCB1Agent(object):
         self.n_actions = n_actions
         self.memory = []
 
-    def handle(self, action, observation, reward, done, info):
-        self.memory.append({'action': action, 'reward': reward})
+    def act(self, observation=None):
         return np.argmax(self.upper_confidence_bounds(self.memory, self.n_actions))
+
+    def handle_transition(self, observation=None, action=None, reward=0, next_observation=None):
+        self.memory.append({'action': action, 'reward': reward})
 
     def reset(self):
         self.memory = []

@@ -19,8 +19,9 @@ class ExperimentResultsVisualization(object):
         axes = ts_plot.axes
         axes.set_ylim(0,1)
         axes.set_title(plot_title)
-        axes.set_ylabel('% Regret')
+        axes.set_ylabel(ylabel)
         axes.set_xlabel('nth step')
+        print('Saving %s' % save_path)
         ts_plot.get_figure().savefig(save_path)
 
     def _load_results(self, results_path):
@@ -35,6 +36,7 @@ class ExperimentResultsVisualization(object):
     def _save_path(self, results_path, fig_filename):
         directory = os.path.dirname(results_path)
         save_path = os.path.join(directory, fig_filename)
+        return save_path
 
     def render_regrets(self, results_path, plot_title):
         results = self._load_results(results_path)
@@ -58,7 +60,7 @@ class ExperimentResultsVisualization(object):
         for key, experiment_results in results.items():
             rewards[i] = experiment_results['reward']
             i += 1
-        self.render_timeseries(
+        self._render_timeseries(
                 rewards, 
                 'Reward', 
                 plot_title, 
@@ -78,3 +80,4 @@ if __name__ == '__main__':
         plot_title = plot_title.split('/')[-1]
         plot_title = re.sub('_', ' ', plot_title)
         viz.render_regrets(results_path, plot_title)
+        viz.render_rewards(results_path, plot_title)

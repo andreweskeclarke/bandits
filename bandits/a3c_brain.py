@@ -6,6 +6,37 @@ from keras.layers import *
 from keras import backend as K
 
 
+def one_layer_mlp_model(n_inputs, n_actions):
+    l_input = Input(batch_shape=(None, n_inputs))
+    l_dense = Dense(8*n_actions, activation='relu')(l_input)
+
+    out_actions = Dense(n_actions, activation='softmax')(l_dense)
+    out_value   = Dense(1, activation='linear')(l_dense)
+
+    model = Model(inputs=[l_input], outputs=[out_actions, out_value])
+    model._make_predict_function()    # have to initialize before threading
+    return model
+
+
+def two_layer_mlp_model(n_inputs, n_actions):
+    l_input = Input(batch_shape=(None, n_inputs))
+    l_dense1 = Dense(8*n_inputs, activation='relu')(l_input)
+    l_dense = Dense(8*n_actions, activation='relu')(l_dense1)
+
+    out_actions = Dense(n_actions, activation='softmax')(l_dense)
+    out_value   = Dense(1, activation='linear')(l_dense)
+
+    model = Model(inputs=[l_input], outputs=[out_actions, out_value])
+    model._make_predict_function()    # have to initialize before threading
+    return model
+
+
+MODELS = {
+    'ONE_LAYER_MLP_MODEL': one_layer_mlp_model,
+    'TWO_LAYER_MLP_MODEL': two_layer_mlp_model,
+    }
+
+
 # Inspired from:
 # https://github.com/jaara/AI-blog/blob/master/CartPole-A3C.py
 # and the corresponding article at:
@@ -19,7 +50,8 @@ class A3CBrain(object):
             batch_size=32,
             coef_value_loss=0.5,
             coef_entropy_loss=0.01,
-            gamma=0.9):
+            gamma=0.9,
+            model_name='TWO_LAYER_MLP_MODEL'):
         self.n_actions = n_actions
         self.n_inputs = n_inputs
         self.multi_threading_lock = threading.Lock()
@@ -42,7 +74,7 @@ class A3CBrain(object):
         K.set_session(self.session)
         K.manual_variable_initialization(True)
 
-        self.model = self._build_model()
+        self.model = MODELS[model_name](self.n_inputs, self.n_actions)
         self.graph = self._build_graph(self.model)
 
         self.session.run(tf.global_variables_initializer())
@@ -127,21 +159,6 @@ class A3CBrain(object):
             self.training_data['discount'].append(discount)
             self.training_data['mask'].append(mask)
 
-    # Lifted from https://github.com/jaara/AI-blog/blob/master/CartPole-A3C.py
-    def _build_model(self):
-        l_input = Input(batch_shape=(None, self.n_inputs))
-        l_dense1 = Dense(8*self.n_inputs, activation='relu')(l_input)
-        l_dense = Dense(8*self.n_actions, activation='relu')(l_dense1)
-
-        out_actions = Dense(self.n_actions, activation='softmax')(l_dense)
-        out_value   = Dense(1, activation='linear')(l_dense)
-
-        model = Model(inputs=[l_input], outputs=[out_actions, out_value])
-        model._make_predict_function()    # have to initialize before threading
-
-        return model
-
-    # Lifted from https://github.com/jaara/AI-blog/blob/master/CartPole-A3C.py
     def _build_graph(self, model):
         s_t = tf.placeholder(tf.float32, shape=(None, self.n_inputs))
         a_t = tf.placeholder(tf.float32, shape=(None, self.n_actions))
@@ -162,4 +179,5 @@ class A3CBrain(object):
         minimize = optimizer.minimize(loss_total)
 
         return s_t, a_t, r_t, minimize
+
 

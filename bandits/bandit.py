@@ -4,10 +4,12 @@ import math
 
 class Bandit(object):
 
-    def __init__(self, arm_probabilities, episode_length=np.inf):
+    def __init__(self, arm_probabilities, episode_length=np.inf, include_steps=False, shuffle_probs=True):
         self._parse_arm_probabilities(arm_probabilities)
         self._episode_length = episode_length
         self._steps = 0
+        self._include_steps = include_steps
+        self._shuffle_probs = shuffle_probs
 
     def _parse_arm_probabilities(self, arm_probabilities):
         arm_probabilities = np.array(arm_probabilities).flatten()
@@ -24,7 +26,10 @@ class Bandit(object):
         reward = np.random.binomial(1, self.arm_probabilities[int(action)])
         self._steps += 1
         if self._steps < self._episode_length:
-            observation = np.array([action, reward])
+            if self._include_steps:
+                observation = np.array([action, reward, self._steps])
+            else:
+                observation = np.array([action, reward])
             done = False
         else:
             observation = None
@@ -34,13 +39,20 @@ class Bandit(object):
         return observation, reward, done, info
 
     def reset(self):
-        self._parse_arm_probabilities(
-                random.sample(self.arm_probabilities.tolist(), len(self.arm_probabilities.tolist())))
+        if self._shuffle_probs:
+            self._parse_arm_probabilities(
+                    random.sample(self.arm_probabilities.tolist(), len(self.arm_probabilities.tolist())))
         self._steps = 0
         return None
 
     def render(self):
         pass
+
+    def n_inputs(self):
+        if self._include_steps:
+            return 3
+        else:
+            return 2
 
     def n_actions(self):
         return self.n_arms
@@ -48,10 +60,14 @@ class Bandit(object):
 
 class MultiBandit(object):
 
-    def __init__(self, envs, episode_length):
+    def __init__(self, envs, episode_length, include_steps=False):
         self.envs = envs
         self._episode_length = episode_length
         self._steps = 0
+        self._include_steps = include_steps
+        if self._include_steps:
+            for e in envs:
+                e._include_steps = True
 
     def _get_env_for_step(self, step, envs, episode_length):
         step = max(0, min(episode_length-1, step))
@@ -73,7 +89,10 @@ class MultiBandit(object):
         observation, reward, done, info = self._get_env_for_step(self._steps, self.envs, self.episode_length()).step(action)
         self._steps += 1
         if self._steps < self.episode_length():
-            observation = np.array([action, reward])
+            if self._include_steps:
+                observation = np.array([action, reward, self._steps])
+            else:
+                observation = np.array([action, reward])
             done = False
         else:
             observation = None
@@ -88,6 +107,9 @@ class MultiBandit(object):
 
     def render(self):
         self._get_env_for_step(self._steps, self.envs, self.episode_length()).render()
+
+    def n_inputs(self):
+        return self._get_env_for_step(self._steps, self.envs, self.episode_length()).n_inputs()
 
     def n_actions(self):
         return self._get_env_for_step(self._steps, self.envs, self.episode_length()).n_actions()

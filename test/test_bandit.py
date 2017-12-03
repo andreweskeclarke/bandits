@@ -112,6 +112,24 @@ class TestMultiBandit(unittest.TestCase):
         self.assertEqual('C', multi_bandit_env._get_env_for_step(step=100, envs=['A', 'B', 'C'], episode_length=100))
         self.assertEqual('C', multi_bandit_env._get_env_for_step(step=1000, envs=['A', 'B', 'C'], episode_length=100))
 
+    def test_running_with_steps_in_observation(self):
+        bandit1 = Bandit([1.0, 0.0])
+        bandit2 = Bandit([0.0, 1.0])
+
+        multi_bandit = MultiBandit([bandit1, bandit2], episode_length=6, include_steps=True)
+
+        o, r, d, i = multi_bandit.step(0)
+        self.assertTrue(np.equal(o, np.array([0, 1, 1])).all())
+        o, r, d, i = multi_bandit.step(0)
+        self.assertTrue(np.equal(o, np.array([0, 1, 2])).all())
+        o, r, d, i = multi_bandit.step(0)
+        self.assertTrue(np.equal(o, np.array([0, 1, 3])).all())
+        o, r, d, i = multi_bandit.step(0)
+        self.assertTrue(np.equal(o, np.array([0, 0, 4])).all())
+        o, r, d, i = multi_bandit.step(0)
+        self.assertTrue(np.equal(o, np.array([0, 0, 5])).all())
+        o, r, d, i = multi_bandit.step(0)
+        self.assertTrue(o is None)
 
     def test_stepping_through_one_episode_and_resetting(self):
         bandit1 = Bandit([1.0, 0.0])
@@ -184,6 +202,43 @@ class TestMultiBandit(unittest.TestCase):
         self.assertEqual(1, multi_bandit.optimal_action())
         multi_bandit.step(0)
         self.assertEqual(1, multi_bandit.optimal_action())
+
+    def test_n_inputs(self):
+        bandit1 = Bandit([1.0, 0.0])
+        bandit2 = Bandit([0.0, 1.0, 0.0, 0.0])
+        multi_bandit = MultiBandit([bandit1, bandit2], episode_length=2)
+        self.assertEqual(2, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(2, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(2, multi_bandit.n_inputs())
+
+        bandit1 = Bandit([1.0, 0.0], include_steps=True)
+        bandit2 = Bandit([0.0, 1.0, 0.0, 0.0])
+        multi_bandit = MultiBandit([bandit1, bandit2], episode_length=2)
+        self.assertEqual(3, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(2, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(2, multi_bandit.n_inputs())
+
+        bandit1 = Bandit([1.0, 0.0])
+        bandit2 = Bandit([0.0, 1.0, 0.0, 0.0], include_steps=True)
+        multi_bandit = MultiBandit([bandit1, bandit2], episode_length=2)
+        self.assertEqual(2, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(3, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(3, multi_bandit.n_inputs())
+
+        bandit1 = Bandit([1.0, 0.0], include_steps=True)
+        bandit2 = Bandit([0.0, 1.0, 0.0, 0.0], include_steps=True)
+        multi_bandit = MultiBandit([bandit1, bandit2], episode_length=2)
+        self.assertEqual(3, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(3, multi_bandit.n_inputs())
+        multi_bandit.step(0)
+        self.assertEqual(3, multi_bandit.n_inputs())
 
 
 if __name__ == '__main__':

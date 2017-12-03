@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 N_EPISODES_PER_TEST=100
-EPISODE_LENGTH=200
+EPISODE_LENGTH=100
 
 
 def build_experiment_path(py_file):
@@ -52,7 +52,8 @@ class ExperimentResultsGenerator(object):
                     observation=observation,
                     action=action,
                     reward=reward,
-                    next_observation=next_observation)
+                    next_observation=next_observation,
+                    done=done)
 
             episode_results['action'].append(action)
             episode_results['reward'].append(reward)

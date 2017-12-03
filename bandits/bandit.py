@@ -1,10 +1,13 @@
 import numpy as np
 import random
+import math
 
 class Bandit(object):
 
-    def __init__(self, arm_probabilities):
+    def __init__(self, arm_probabilities, episode_length=np.inf):
         self._parse_arm_probabilities(arm_probabilities)
+        self._episode_length = episode_length
+        self._steps = 0
 
     def _parse_arm_probabilities(self, arm_probabilities):
         arm_probabilities = np.array(arm_probabilities).flatten()
@@ -15,21 +18,80 @@ class Bandit(object):
         return np.argmax(self.arm_probabilities)
 
     def step(self, action):
+        if self._steps >= self._episode_length:
+            raise ValueError('This environment has been exhausted, please reset()')
+
         reward = np.random.binomial(1, self.arm_probabilities[int(action)])
-        observation = np.array([action, reward])
-        done = False
+        self._steps += 1
+        if self._steps < self._episode_length:
+            observation = np.array([action, reward])
+            done = False
+        else:
+            observation = None
+            done = True
+
         info = {}
         return observation, reward, done, info
 
     def reset(self):
         self._parse_arm_probabilities(
                 random.sample(self.arm_probabilities.tolist(), len(self.arm_probabilities.tolist())))
+        self._steps = 0
+        return None
 
     def render(self):
         pass
 
     def n_actions(self):
         return self.n_arms
+
+
+class MultiBandit(object):
+
+    def __init__(self, envs, episode_length):
+        self.envs = envs
+        self._episode_length = episode_length
+        self._steps = 0
+
+    def _get_env_for_step(self, step, envs, episode_length):
+        step = max(0, min(episode_length-1, step))
+        percent_done = float(step) / float(episode_length)
+        current_env_index = math.floor(percent_done * float(len(envs)))
+        current_env_index = max(0, min(len(envs)-1, current_env_index))
+        return envs[current_env_index]
+
+    def episode_length(self):
+        return self._episode_length
+
+    def optimal_action(self):
+        return self._get_env_for_step(self._steps, self.envs, self.episode_length()).optimal_action()
+
+    def step(self, action):
+        if self._steps >= self.episode_length():
+            raise ValueError('This environment has been exhausted, please reset()')
+
+        observation, reward, done, info = self._get_env_for_step(self._steps, self.envs, self.episode_length()).step(action)
+        self._steps += 1
+        if self._steps < self.episode_length():
+            observation = np.array([action, reward])
+            done = False
+        else:
+            observation = None
+            done = True
+        return observation, reward, done, info
+
+    def reset(self):
+        self._steps = 0
+        for e in self.envs:
+            e.reset()
+        return None
+
+    def render(self):
+        self._get_env_for_step(self._steps, self.envs, self.episode_length()).render()
+
+    def n_actions(self):
+        return self._get_env_for_step(self._steps, self.envs, self.episode_length()).n_actions()
+
 
 def fixed_bandit():
     probs = [0.0, 1.0]

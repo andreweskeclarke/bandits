@@ -3,6 +3,7 @@ import shutil
 import unittest
 from unittest import mock
 from bandits.experiment_results_generator import *
+from bandits.bandit import *
 
 
 class TestExperimentResultsGenerator(unittest.TestCase):
@@ -14,80 +15,27 @@ class TestExperimentResultsGenerator(unittest.TestCase):
         py_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../ucb_experiments/ucb1_agent_with_easy_bandit_env.py')
         self.assertEqual('/home/andrew/src/bandits/ucb_experiments/ucb1_agent_with_easy_bandit_env/', build_experiment_path(py_file))
 
-    def test_get_current_env_for_current_step(self):
-        experiment = ExperimentResultsGenerator()
-        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=100, envs=['A'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1000, envs=['A'], episode_length=100))
-
-        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=2, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=46, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=47, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=48, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=49, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=50, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=51, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=100, envs=['A', 'B'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=1000, envs=['A', 'B'], episode_length=100))
-
-        self.assertEqual('A', experiment._get_env_for_current_step(step=-1, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=0, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=1, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('A', experiment._get_env_for_current_step(step=33, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=34, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=65, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('B', experiment._get_env_for_current_step(step=66, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=67, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=100, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=100, envs=['A', 'B', 'C'], episode_length=100))
-        self.assertEqual('C', experiment._get_env_for_current_step(step=1000, envs=['A', 'B', 'C'], episode_length=100))
-
     def test_single_bandit_environment(self):
         n_episodes = 3
+        episode_length = 55
         agent = mock.Mock()
         agent.configure_mock(**{
             'act.return_value': 0
             })
-        env = mock.Mock()
-        env.configure_mock(**{
-            'step.return_value': (None, 0, False, {}),
-            'optimal_action.return_value': 0,
-            })
+        env = Bandit([1.0, 0.0], episode_length=episode_length)
         experiment = ExperimentResultsGenerator()
-        experiment.run(agent=agent, env=env, n_episodes=n_episodes)
+        experiment.run(
+                agent=agent,
+                env=env,
+                n_episodes=n_episodes)
 
-        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(agent.handle_transition.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env.step.call_count, EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.act.call_count, episode_length*n_episodes)
+        self.assertEqual(agent.handle_transition.call_count, episode_length*n_episodes)
         self.assertEqual(agent.reset.call_count, n_episodes)
-        self.assertEqual(env.reset.call_count, n_episodes)
-
-    def test_single_bandit_environment_as_list(self):
-        n_episodes = 3
-        agent = mock.Mock()
-        agent.configure_mock(**{
-            'act.return_value': 0
-            })
-        env = mock.Mock()
-        env.configure_mock(**{
-            'step.return_value': (None, 0, False, {}),
-            'optimal_action.return_value': 0,
-            })
-        experiment = ExperimentResultsGenerator()
-        experiment.run(agent=agent, env=[env], n_episodes=n_episodes)
-
-        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env.step.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(agent.reset.call_count, n_episodes)
-        self.assertEqual(env.reset.call_count, n_episodes)
 
     def test_two_bandit_environment(self):
         n_episodes = 3
+        episode_length = 10
         agent = mock.Mock()
         agent.configure_mock(**{
             'act.return_value': 0
@@ -103,17 +51,22 @@ class TestExperimentResultsGenerator(unittest.TestCase):
             'optimal_action.return_value': 0,
             })
         experiment = ExperimentResultsGenerator()
-        experiment.run(agent=agent, env=[env1, env2], n_episodes=n_episodes)
+        experiment.run(
+                agent=agent,
+                env=MultiBandit([env1, env2], episode_length=episode_length),
+                n_episodes=n_episodes)
 
-        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env1.step.call_count, EPISODE_LENGTH*n_episodes / 2.0)
-        self.assertEqual(env2.step.call_count, EPISODE_LENGTH*n_episodes / 2.0)
+        self.assertEqual(agent.act.call_count, episode_length*n_episodes)
+        self.assertEqual(agent.handle_transition.call_count, episode_length*n_episodes)
         self.assertEqual(agent.reset.call_count, n_episodes)
+        self.assertEqual(env1.step.call_count, episode_length*n_episodes / 2.0)
+        self.assertEqual(env2.step.call_count, episode_length*n_episodes / 2.0)
         self.assertEqual(env1.reset.call_count, n_episodes)
         self.assertEqual(env2.reset.call_count, n_episodes)
 
     def test_four_bandit_environment(self):
         n_episodes = 3
+        episode_length = 24
         agent = mock.Mock()
         agent.configure_mock(**{
             'act.return_value': 0
@@ -139,14 +92,18 @@ class TestExperimentResultsGenerator(unittest.TestCase):
             'optimal_action.return_value': 0,
             })
         experiment = ExperimentResultsGenerator()
-        experiment.run(agent=agent, env=[env1, env2, env3, env4], n_episodes=n_episodes)
+        experiment.run(
+                agent=agent,
+                env=MultiBandit([env1, env2, env3, env4], episode_length=episode_length),
+                n_episodes=n_episodes)
 
-        self.assertEqual(agent.act.call_count, EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env1.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env2.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env3.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
-        self.assertEqual(env4.step.call_count, 0.25*EPISODE_LENGTH*n_episodes)
+        self.assertEqual(agent.act.call_count, episode_length*n_episodes)
+        self.assertEqual(agent.handle_transition.call_count, episode_length*n_episodes)
         self.assertEqual(agent.reset.call_count, n_episodes)
+        self.assertEqual(env1.step.call_count, 0.25*episode_length*n_episodes)
+        self.assertEqual(env2.step.call_count, 0.25*episode_length*n_episodes)
+        self.assertEqual(env3.step.call_count, 0.25*episode_length*n_episodes)
+        self.assertEqual(env4.step.call_count, 0.25*episode_length*n_episodes)
         self.assertEqual(env1.reset.call_count, n_episodes)
         self.assertEqual(env2.reset.call_count, n_episodes)
         self.assertEqual(env3.reset.call_count, n_episodes)
@@ -154,6 +111,7 @@ class TestExperimentResultsGenerator(unittest.TestCase):
 
     def test_results_from_experiment(self):
         n_episodes = 3
+        episode_length = 10
         agent = mock.Mock()
         agent.configure_mock(**{
             'act.return_value': np.int64(0)
@@ -164,7 +122,10 @@ class TestExperimentResultsGenerator(unittest.TestCase):
             'optimal_action.return_value': np.int64(0),
             })
         experiment = ExperimentResultsGenerator()
-        experiment.run(agent=agent, env=env, n_episodes=n_episodes)
+        experiment.run(
+                agent=agent,
+                env=MultiBandit([env], episode_length=episode_length),
+                n_episodes=n_episodes)
 
         converted_output = json.dumps(experiment.results, cls=NumpyEncoder)
         # Really just want to ensure this doesnt blow up

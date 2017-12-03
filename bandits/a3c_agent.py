@@ -37,6 +37,8 @@ class A3CAgent(object):
     def push_to_brain(self, brain, memory):
         for i in range(len(memory)):
             o, a, r, o_ = memory[i]
+            if o is None:
+                o = self._none_state()
             if o_ is None:
                 o_ = self._none_state()
             r = 0.0
@@ -51,6 +53,21 @@ class A3CAgent(object):
 
     def _none_state(self):
         return np.zeros(self.n_actions)
+
+
+class A3CEnvironment(object):
+
+    def __init__(self, stop_signal, agent, env):
+        self.stop_signal = stop_signal
+        self.agent = agent
+        self.env = env
+
+    def run(self):
+        while not self.stop_signal.is_set():
+            self.run_one_episode()
+
+    def run_one_episode(self):
+        pass
 
 class Optimizer(threading.Thread):
     def __init__(self, brain, stop_signal):

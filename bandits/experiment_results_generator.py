@@ -20,17 +20,14 @@ class ExperimentResultsGenerator(object):
     def  __init__(self):
         pass
 
-    def _get_env_for_current_step(self, step, envs, episode_length=EPISODE_LENGTH):
-        step = max(0, min(episode_length-1, step))
-        percent_done = float(step) / float(episode_length)
-        current_env_index = math.floor(percent_done * float(len(envs)))
-        current_env_index = max(0, min(len(envs)-1, current_env_index))
-        return envs[current_env_index]
-
     def run(self, agent, env, n_episodes=N_EPISODES_PER_TEST):
-        if not isinstance(env, list):
-            env = [env]
+        self.results = {}
+        for i_episode in range(n_episodes):
+            episode_results = self.run_one_episode(agent, env)
+            self.results[i_episode] = episode_results
+        return self.results
 
+    def run_one_episode(self, agent, env):
         action = None
         observation = None
         next_observation = None
@@ -38,34 +35,30 @@ class ExperimentResultsGenerator(object):
         done = False
         info = {}
 
-        self.results = {}
-        for i_episode in range(n_episodes):
-            agent.reset()
-            for e in env:
-                e.reset()
-            episode_results = {
-                    'action': np.zeros(EPISODE_LENGTH).tolist(),
-                    'reward': np.zeros(EPISODE_LENGTH).tolist(),
-                    'optimal_action': np.zeros(EPISODE_LENGTH).tolist(),
-                    }
-            for i_step in range(EPISODE_LENGTH):
-                observation = next_observation
-                current_env = self._get_env_for_current_step(i_step, env) 
-                action = agent.act(observation=observation)
-                optimal_action = current_env.optimal_action()
-                next_observation, reward, done, info = current_env.step(action)
-                agent.handle_transition(
-                        observation=observation,
-                        action=action,
-                        reward=reward,
-                        next_observation=next_observation)
+        agent.reset()
+        next_observation = env.reset()
 
-                episode_results['action'][i_step] = action
-                episode_results['reward'][i_step] = reward
-                episode_results['optimal_action'][i_step] = optimal_action
-                current_env.render()
+        episode_results = {
+                'action': list(),
+                'reward': list(),
+                'optimal_action': list(),
+                }
+        while not done:
+            observation = next_observation
+            action = agent.act(observation=observation)
+            optimal_action = env.optimal_action()
+            next_observation, reward, done, info = env.step(action)
+            agent.handle_transition(
+                    observation=observation,
+                    action=action,
+                    reward=reward,
+                    next_observation=next_observation)
 
-            self.results[i_episode] = episode_results
+            episode_results['action'].append(action)
+            episode_results['reward'].append(reward)
+            episode_results['optimal_action'].append(optimal_action)
+            env.render()
+        return episode_results
 
     def save_results(self, save_dir):
         results_output_path = os.path.join(save_dir, 'results.json')
@@ -85,5 +78,5 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
         else:
-            return super(MyEncoder, self).default(obj)
+            return super(NumpyEncoder, self).default(obj)
 

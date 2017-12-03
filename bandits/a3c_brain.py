@@ -23,7 +23,14 @@ class A3CBrain(object):
         self.n_actions = n_actions
         self.n_inputs = n_inputs
         self.multi_threading_lock = threading.Lock()
-        self.training_data = [list(), list(), list(), list(), list()]
+        self.training_data = {
+                'observation': list(),
+                'action': list(),
+                'reward': list(),
+                'next_observation': list(),
+                'discount': list(),
+                'mask': list(),
+                }
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.coef_value_loss = coef_value_loss
@@ -43,7 +50,14 @@ class A3CBrain(object):
         self.default_graph.finalize()   # avoid modifications
 
     def reset(self):
-        self.training_data = [list(), list(), list(), list(), list()]
+        self.training_data = {
+                'observation': list(),
+                'action': list(),
+                'reward': list(),
+                'next_observation': list(),
+                'discount': list(),
+                'mask': list(),
+                }
 
     def predict(self, s):
         with self.default_graph.as_default():
@@ -62,56 +76,62 @@ class A3CBrain(object):
         return self.predict(s)[1]
 
     def optimize(self):
-        if len(self.training_data[0]) < self.batch_size:
+        if len(self.training_data['observation']) < self.batch_size:
             return
 
         with self.multi_threading_lock:
-            if len(self.training_data[0]) < self.batch_size:
+            if len(self.training_data['observation']) < self.batch_size:
                 return
 
-            s = self.training_data[0]
-            a = self.training_data[1]
-            r = self.training_data[2]
-            s_ = self.training_data[3]
-            s_mask = self.training_data[4]
+            s = self.training_data['observation']
+            a = self.training_data['action']
+            r = self.training_data['reward']
+            s_ = self.training_data['next_observation']
+            discount = self.training_data['discount']
+            s_mask = self.training_data['mask']
 
             # Clear training data
-            self.training_data[0] = list()
-            self.training_data[1] = list()
-            self.training_data[2] = list()
-            self.training_data[3] = list()
-            self.training_data[4] = list()
+            self.training_data = {
+                    'observation': list(),
+                    'action': list(),
+                    'reward': list(),
+                    'next_observation': list(),
+                    'discount': list(),
+                    'mask': list(),
+                    }
 
         s = np.vstack(s)
         a = np.vstack(a)
         r = np.vstack(r)
         s_ = np.vstack(s_)
+        discount = np.vstack(discount)
         s_mask = np.vstack(s_mask)
 
         if len(s) > 5*self.batch_size: print("Optimizer alert! Minimizing batch of %d" % len(s))
 
         v = self.predict_v(s_)
-        # TODO - this gamma is not correct
-        r = r + self.gamma * v * s_mask    # set v to 0 where s_ is terminal state
+        r = r + discount * v * s_mask    # set v to 0 where s_ is terminal state
         
         s_t, a_t, r_t, minimize = self.graph
         self.session.run(minimize, feed_dict={s_t: s, a_t: a, r_t: r})
         self._n_optimize_runs += 1
 
 
-    def push_training_example(self, observation, action, reward, next_observation):
+    def push_training_example(self, observation, action, reward, next_observation, discount):
         with self.multi_threading_lock:
             mask = 0.0 if next_observation is None else 1.0
-            self.training_data[0].append(self._prep_input(observation))
-            self.training_data[1].append(action)
-            self.training_data[2].append(reward)
-            self.training_data[3].append(self._prep_input(next_observation))
-            self.training_data[4].append(mask)
+            self.training_data['observation'].append(self._prep_input(observation))
+            self.training_data['action'].append(action)
+            self.training_data['reward'].append(reward)
+            self.training_data['next_observation'].append(self._prep_input(next_observation))
+            self.training_data['discount'].append(discount)
+            self.training_data['mask'].append(mask)
 
     # Lifted from https://github.com/jaara/AI-blog/blob/master/CartPole-A3C.py
     def _build_model(self):
         l_input = Input(batch_shape=(None, self.n_inputs))
-        l_dense = Dense(8*self.n_inputs, activation='relu')(l_input)
+        l_dense1 = Dense(8*self.n_inputs, activation='relu')(l_input)
+        l_dense = Dense(8*self.n_actions, activation='relu')(l_dense1)
 
         out_actions = Dense(self.n_actions, activation='softmax')(l_dense)
         out_value   = Dense(1, activation='linear')(l_dense)

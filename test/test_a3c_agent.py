@@ -116,16 +116,19 @@ class TestA3CAgent(unittest.TestCase):
         self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
         self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
         self.assertTrue(np.equal(action1, brain.push_training_example.call_args_list[0][1]['action']).all())
+        self.assertEqual(1.0, brain.push_training_example.call_args_list[0][1]['discount'])
         self.assertEqual(3.0, brain.push_training_example.call_args_list[0][1]['reward'])
 
         self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
         self.assertTrue(np.equal(action2, brain.push_training_example.call_args_list[1][1]['action']).all())
+        self.assertEqual(1.0, brain.push_training_example.call_args_list[1][1]['discount'])
         self.assertEqual(2.0, brain.push_training_example.call_args_list[1][1]['reward'])
 
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
         self.assertTrue(np.equal(None, brain.push_training_example.call_args_list[2][1]['next_observation']).all())
         self.assertTrue(np.equal(action3, brain.push_training_example.call_args_list[2][1]['action']).all())
+        self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['discount'])
         self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
 
     def test_push_discounted_rewards_to_brain_with_gamma_half(self):
@@ -150,16 +153,19 @@ class TestA3CAgent(unittest.TestCase):
         self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
         self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
         self.assertTrue(np.equal(action1, brain.push_training_example.call_args_list[0][1]['action']).all())
+        self.assertEqual(1/8., brain.push_training_example.call_args_list[0][1]['discount'])
         self.assertEqual(1.75, brain.push_training_example.call_args_list[0][1]['reward'])
 
         self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
         self.assertTrue(np.equal(action2, brain.push_training_example.call_args_list[1][1]['action']).all())
+        self.assertEqual(1/4., brain.push_training_example.call_args_list[1][1]['discount'])
         self.assertEqual(1.5, brain.push_training_example.call_args_list[1][1]['reward'])
 
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
         self.assertTrue(np.equal(None, brain.push_training_example.call_args_list[2][1]['next_observation']).all())
         self.assertTrue(np.equal(action3, brain.push_training_example.call_args_list[2][1]['action']).all())
+        self.assertEqual(1/2., brain.push_training_example.call_args_list[2][1]['discount'])
         self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
 
     def test_handle_transitions_with_end_of_episode(self):
@@ -186,16 +192,19 @@ class TestA3CAgent(unittest.TestCase):
         self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
         self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
         self.assertTrue(np.equal(expected_action1, brain.push_training_example.call_args_list[0][1]['action']).all())
+        self.assertEqual(1/8., brain.push_training_example.call_args_list[0][1]['discount'])
         self.assertEqual(1.75, brain.push_training_example.call_args_list[0][1]['reward'])
 
         self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
         self.assertTrue(np.equal(expected_action2, brain.push_training_example.call_args_list[1][1]['action']).all())
+        self.assertEqual(1/4., brain.push_training_example.call_args_list[1][1]['discount'])
         self.assertEqual(1.5, brain.push_training_example.call_args_list[1][1]['reward'])
 
         self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
         self.assertTrue(np.equal(None, brain.push_training_example.call_args_list[2][1]['next_observation']).all())
         self.assertTrue(np.equal(expected_action3, brain.push_training_example.call_args_list[2][1]['action']).all())
+        self.assertEqual(1/2., brain.push_training_example.call_args_list[2][1]['discount'])
         self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
 
 

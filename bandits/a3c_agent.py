@@ -44,12 +44,15 @@ class A3CAgent(object):
             for j in range(i, len(memory)):
                 r += memory[j][2] * (self.gamma**(j-i))
 
+            v_discount = self.gamma**(len(memory) - i)
             time.sleep(self._thread_delay) # yield to allow many many parallel agents running
-            brain.push_training_example(
-                    observation=o,
-                    action=a,
-                    reward=r,
-                    next_observation=o_)
+            brain.push_training_example(**{
+                    'observation': o,
+                    'action': a,
+                    'reward': r,
+                    'next_observation': o_,
+                    'discount': v_discount,
+                    })
 
 
 class AsynchRunner(threading.Thread):

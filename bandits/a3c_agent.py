@@ -81,9 +81,11 @@ class AsynchRunner(threading.Thread):
         self.env = env
         self._thread_delay = thread_delay
         self._total_episodes = 0
+        self._total_trials = 0
 
     def run(self):
         while not self.stop_signal.is_set():
+            self._total_episodes += 1
             self.run_one_episode(agent=self.agent, env=self.env)
 
     def run_one_episode(self, agent, env):
@@ -95,7 +97,7 @@ class AsynchRunner(threading.Thread):
         done = False
         info = {}
         while not done and not self.stop_signal.is_set():
-            self._total_episodes += 1
+            self._total_trials += 1
             time.sleep(self._thread_delay) # yield to allow many many parallel agents running
 
             observation = next_observation

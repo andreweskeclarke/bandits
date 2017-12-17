@@ -12,21 +12,34 @@ if __name__ == '__main__':
     n_optimizers = 8
     n_runners = 8
     brain = None
+    coef_entropy_loss_begin = 1.0
+    coef_entropy_loss_end = 0.0
+    n_training_epochs = 40
 
     def generate_env():
-        env = [bandit.easy_bandit()]
-        n_actions = env[0].n_actions()
-        n_inputs = env[0].n_inputs()
-        env = bandit.MultiBandit(env, episode_length=experiment_results_generator.EPISODE_LENGTH)
+        env = [bandit.fixed_bandit()]
+        env = bandit.MultiBandit(env, episode_length=20, include_steps=True)
+        n_actions = env.n_actions()
+        n_inputs = env.n_inputs()
         return env, n_actions, n_inputs
 
     def generate_agent(brain, n_actions):
         return a3c_agent.A3CAgent(n_actions, brain, thread_delay=thread_delay)
 
     def generate_brain(n_actions, n_inputs):
-        return a3c_brain.A3CBrain(n_actions=n_actions, n_inputs=n_inputs, n_timesteps=experiment_results_generator.EPISODE_LENGTH, model_name='LSTM_MODEL', batch_size=4)
+        print('GENERATE NEW BRAIN')
+        return a3c_brain.A3CBrain(
+                n_actions=n_actions,
+                n_inputs=n_inputs,
+                n_timesteps=20,
+                model_name='LSTM_MODEL',
+                batch_size=16,
+                coef_value_loss=0.05,
+                coef_entropy_loss=coef_entropy_loss_begin,
+                gamma=0.8,
+                learning_rate=0.001)
 
-    for i in range(20):
+    for i in range(n_training_epochs):
         t = training_time if i > 0 else 0
         brain = a3c_experiments.run_training(
                 brain=brain,
@@ -37,13 +50,18 @@ if __name__ == '__main__':
                 n_optimizers=n_optimizers, 
                 n_runners=n_runners,
                 thread_delay=thread_delay)
+
+        # Update coefficient of entropy loss - annealing
+        new_coef_entropy_loss = coef_entropy_loss_begin * (1 - ((i+1)/n_training_epochs))
+        brain.update_coef_entropy_loss(new_coef_entropy_loss)
+
         results = a3c_experiments.run_testing(
                 brain=brain,
                 env_generator=generate_env,
                 agent_generator=generate_agent,
                 save_dir=experiment_results_generator.build_experiment_path(__file__),
-                n_episodes=50)
-        average_reward, std_reward = a3c_experiments.summarize_results(results)
+                n_episodes=100)
+        average_reward, std_reward = a3c_experiments.summarize_results(results, episode_length=20)
         brain.reset()
         print('After training iteraton %s, average reward in testing is %s (+/-%s)' % (i, average_reward, std_reward))
 

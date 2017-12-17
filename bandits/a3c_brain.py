@@ -33,8 +33,8 @@ def two_layer_mlp_model(n_inputs, n_actions, n_timesteps):
 
 def lstm_model(n_inputs, n_actions, n_timesteps):
     l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
-    l_lstm_input = Input(batch_shape=(None, 8*n_inputs))
-    l_lstm = GRU(8*n_inputs, activation='relu', return_sequences=True)(l_input, initial_state=l_lstm_input)
+    l_lstm_input = Input(batch_shape=(None, 48))
+    l_lstm = GRU(48, activation='relu', return_sequences=True)(l_input, initial_state=l_lstm_input)
     l_dense = Dense(8*n_actions, activation='relu')(l_lstm)
 
     out_actions = Dense(n_actions, activation='softmax')(l_dense)
@@ -99,6 +99,9 @@ class A3CBrain(object):
         self.default_graph = tf.get_default_graph()
         self.default_graph.finalize()   # avoid modifications
 
+    def update_coef_entropy_loss(self, coef):
+        self.coef_entropy_loss = coef
+
     def reset(self):
         self.training_data = {
                 'observation': list(),
@@ -116,6 +119,9 @@ class A3CBrain(object):
         if state_h is None:
             state_h = self.default_state_h(batch_size=1)
         p, v, state_h = self.model.predict([s_input, state_h])
+        if np.random.random() > 1.9999:
+            print(s_input[0,0,:])
+            print(p[0,0:3,:])
         p = p[0,0,:].reshape((self.n_actions,))
         v = v[0,0,:].reshape((1,))
         state_h = state_h[0,0,:].reshape((1,-1))
@@ -131,7 +137,7 @@ class A3CBrain(object):
 
     def default_state_h(self, batch_size=1):
         # TODO how to dunamically figure this out
-        return np.zeros((batch_size, 8*self.n_inputs), dtype=np.float32)
+        return np.zeros((batch_size, 48), dtype=np.float32)
 
     def predict_v(self, s, state_h=None):
         return self.predict(s, state_h)[1]
@@ -175,7 +181,7 @@ class A3CBrain(object):
         r = r + discount * v * s_mask    # set v to 0 where s_ is terminal state
         
         s_t, a_t, r_t, lstm_s_t, minimize = self.graph
-        feed_dict = {s_t: s, a_t: a, r_t: r, lstm_s_t: lstm_s, self.model.inputs[1]: lstm_s}
+        feed_dict = {s_t: s, a_t: a, r_t: r, lstm_s_t: lstm_s, self.model.inputs[1]: lstm_s, self.model.inputs[0]: s}
         self.session.run(minimize, feed_dict=feed_dict)
         self._n_optimize_runs += 1
 
@@ -192,8 +198,8 @@ class A3CBrain(object):
         s_t = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, self.n_inputs))
         a_t = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, self.n_actions))
         r_t = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, 1)) # discounted n step reward
-        lstm_s_t = tf.placeholder(tf.float32, shape=(None, 8*self.n_inputs))
-        
+        lstm_s_t = tf.placeholder(tf.float32, shape=(None, 48))
+
         p_actions, v, _ = model([s_t, lstm_s_t])
 
         log_prob = tf.log( tf.reduce_sum(p_actions * a_t, axis=2, keep_dims=True) + 1e-10)
@@ -201,12 +207,16 @@ class A3CBrain(object):
 
         loss_policy = - log_prob * tf.stop_gradient(advantage)                                                             # maximize policy
         loss_value  = self.coef_value_loss * tf.square(advantage)                                                          # minimize value error
-        entropy = self.coef_entropy_loss * tf.reduce_sum(p_actions * tf.log(p_actions + 1e-10), axis=2, keep_dims=True)    # maximize entropy (regularization)
+        loss_entropy = self.coef_entropy_loss * tf.reduce_sum(p_actions * tf.log(p_actions + 1e-10), axis=2, keep_dims=True)    # maximize entropy (regularization)
 
-        loss_total = tf.reduce_mean(loss_policy + loss_value + entropy)
+        loss_total = tf.reduce_mean(loss_policy + loss_value + loss_entropy)
 
-        optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=.99)
-        minimize = optimizer.minimize(loss_total)
+        # optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=.99)
+        # minimize = optimizer.minimize(loss_total)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        gvs = optimizer.compute_gradients(loss_total)
+        capped_gvs = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gvs]
+        minimize = optimizer.apply_gradients(capped_gvs)
 
         return s_t, a_t, r_t, lstm_s_t, minimize
 

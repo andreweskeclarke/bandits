@@ -53,16 +53,19 @@ def run_training(
     for r in runners:
         r.join()
 
-    print('\tCompleted training, encountered %s episodes, trained %s times' %
-            (sum([r._total_episodes for r in runners]), brain._n_optimize_runs))
+    print('\tCompleted training, encountered %s episodes, %s trials, trained %s times' %
+            (sum([r._total_episodes for r in runners]), 
+             sum([r._total_trials for r in runners]),
+             brain._n_optimize_runs))
     return brain
 
 
-def summarize_results(results):
-    rewards = np.zeros(experiment_results_generator.EPISODE_LENGTH)
+def summarize_results(results, episode_length=experiment_results_generator.EPISODE_LENGTH):
+    rewards = np.zeros((len(results.items()), episode_length))
+    i = 0
     for k in results.keys():
-        rewards = rewards + results[k]['reward']
-    rewards = rewards / len(results.items())
+        rewards[i] = results[k]['reward']
+        i += 1
     return np.mean(rewards), np.std(rewards)
 
 

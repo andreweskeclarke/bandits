@@ -36,7 +36,7 @@ def run_training(
     runners = []
     for i in range(n_runners):
         env, n_actions, n_inputs = env_generator()
-        brain = brain if brain is not None else a3c_brain.A3CBrain(n_actions, n_inputs)
+        brain = brain if brain is not None else brain_generator(n_actions, n_inputs)
         agent = agent_generator(brain, n_actions)
         runners.append(a3c_agent.AsynchRunner(stop_signal, agent, env, thread_delay=thread_delay))
 

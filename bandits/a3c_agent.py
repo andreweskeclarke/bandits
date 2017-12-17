@@ -1,3 +1,4 @@
+import collections
 import random
 import threading
 import numpy as np
@@ -17,14 +18,13 @@ class A3CAgent(object):
         self.gamma = gamma
         self.memory = []
         self._thread_delay = thread_delay
+        self.state_h = None
 
     def act(self, observation=None):
+        action_probs, _, self.state_h = self.brain.single_prediction(observation, self.state_h)
         if random.random() < self.epsilon:
             return random.randint(0, self.n_actions-1)
         else:
-            action_probs = self.brain.predict_action(observation)
-            if action_probs.ndim > 1:
-                action_probs  = action_probs[0]
             return np.random.choice(self.n_actions, p=action_probs)
 
     def handle_transition(self, observation=None, action=None, reward=0, next_observation=None, done=False):
@@ -38,21 +38,38 @@ class A3CAgent(object):
         self.memory = list()
 
     def push_to_brain(self, brain, memory):
+        n_inputs = self.brain.n_inputs
+        default_o = np.zeros((n_inputs,))
+        observations = np.zeros((len(memory), n_inputs))
+        actions = np.zeros((len(memory), self.n_actions))
+        rewards = np.zeros((len(memory), 1))
+        next_observations = np.zeros((len(memory), n_inputs))
+        discounts = np.zeros((len(memory), 1))
+        end_of_episode_mask = np.ones((len(memory), 1))
+        end_of_episode_mask[-1][0] = 0.0
         for i in range(len(memory)):
             o, a, r, o_ = memory[i]
+            o = o if o is not None else default_o
+            o_ = o_ if o_ is not None else default_o
             r = 0.0
             for j in range(i, len(memory)):
                 r += memory[j][2] * (self.gamma**(j-i))
 
             v_discount = self.gamma**(len(memory) - i)
-            time.sleep(self._thread_delay) # yield to allow many many parallel agents running
-            brain.push_training_example(**{
-                    'observation': o,
-                    'action': a,
-                    'reward': r,
-                    'next_observation': o_,
-                    'discount': v_discount,
-                    })
+
+            observations[i][:] = o.reshape((n_inputs,))
+            actions[i][:] = a
+            rewards[i][0] = r
+            next_observations[i][:] = o_.reshape((n_inputs,))
+            discounts[i][0] = v_discount
+        brain.push_training_episode(**{
+                'observation': np.array(observations),
+                'action': actions,
+                'reward': rewards,
+                'next_observation': np.array(next_observations),
+                'discount': discounts,
+                'mask': end_of_episode_mask,
+                })
 
 
 class AsynchRunner(threading.Thread):

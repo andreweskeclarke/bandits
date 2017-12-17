@@ -24,7 +24,7 @@ if __name__ == '__main__':
         return a3c_agent.A3CAgent(n_actions, brain, thread_delay=thread_delay)
 
     def generate_brain(n_actions, n_inputs):
-        return a3c_brain.A3CBrain(n_actions, n_inputs, model_name='TWO_LAYER_MLP_MODEL')
+        return a3c_brain.A3CBrain(n_actions=n_actions, n_inputs=n_inputs, n_timesteps=experiment_results_generator.EPISODE_LENGTH, model_name='TWO_LAYER_MLP_MODEL')
 
     for i in range(20):
         t = training_time if i > 0 else 0

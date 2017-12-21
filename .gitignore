@@ -141,3 +141,5 @@ experiments/**/*.json
 experiments/**/*.png
 functional_test/**/*.json
 functional_test/**/*.png
+training_reports/
+

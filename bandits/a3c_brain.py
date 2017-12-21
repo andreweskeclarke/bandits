@@ -1,3 +1,5 @@
+import os
+import datetime as dt
 import threading
 import tensorflow as tf
 
@@ -34,11 +36,14 @@ def two_layer_mlp_model(n_inputs, n_actions, n_timesteps):
 def lstm_model(n_inputs, n_actions, n_timesteps):
     l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
     l_lstm_input = Input(batch_shape=(None, 48))
-    l_lstm = GRU(48, activation='relu', return_sequences=True)(l_input, initial_state=l_lstm_input)
-    l_dense = Dense(8*n_actions, activation='relu')(l_lstm)
+    l_lstm = GRU(48,
+            return_sequences=True,
+            recurrent_activation='sigmoid',
+            activation='tanh')\
+                    (l_input, initial_state=l_lstm_input)
 
-    out_actions = Dense(n_actions, activation='softmax')(l_dense)
-    out_value   = Dense(1, activation='linear')(l_dense)
+    out_actions = Dense(n_actions, activation='softmax')(l_lstm)
+    out_value   = Dense(1, activation='linear')(l_lstm)
 
     # Return the full LSTM output sequence - so people can reuse the hidden LSTM state as required
     model = Model(inputs=[l_input, l_lstm_input], outputs=[out_actions, out_value, l_lstm])
@@ -87,6 +92,7 @@ class A3CBrain(object):
         self.coef_entropy_loss = coef_entropy_loss
         self.gamma = gamma
         self._n_optimize_runs = 0
+        self.avg_reward = 0.0
 
         self.session = tf.Session()
         K.set_session(self.session)
@@ -100,7 +106,7 @@ class A3CBrain(object):
         self.default_graph.finalize()   # avoid modifications
 
     def update_coef_entropy_loss(self, coef):
-        self.coef_entropy_loss = coef
+        self.coef_entropy_loss = max(0.0, coef)
 
     def reset(self):
         self.training_data = {
@@ -119,9 +125,6 @@ class A3CBrain(object):
         if state_h is None:
             state_h = self.default_state_h(batch_size=1)
         p, v, state_h = self.model.predict([s_input, state_h])
-        if np.random.random() > 1.9999:
-            print(s_input[0,0,:])
-            print(p[0,0:3,:])
         p = p[0,0,:].reshape((self.n_actions,))
         v = v[0,0,:].reshape((1,))
         state_h = state_h[0,0,:].reshape((1,-1))
@@ -167,6 +170,7 @@ class A3CBrain(object):
                     'mask': list(),
                     }
 
+        n_look_ahead = 10
         s = np.stack(s)
         a = np.stack(a)
         r = np.stack(r)
@@ -177,12 +181,24 @@ class A3CBrain(object):
 
         if len(s) > 5*self.batch_size: print("Optimizer alert! Minimizing batch of %d" % len(s))
 
-        v = self.predict_v(s_)
-        r = r + discount * v * s_mask    # set v to 0 where s_ is terminal state
-        
-        s_t, a_t, r_t, lstm_s_t, minimize = self.graph
-        feed_dict = {s_t: s, a_t: a, r_t: r, lstm_s_t: lstm_s, self.model.inputs[1]: lstm_s, self.model.inputs[0]: s}
+        v = self.predict_v(s)
+        v[:,:-n_look_ahead,:] = v[:,n_look_ahead:,:]
+        v_pred = np.multiply(np.multiply(discount, v), s_mask) # set v to 0 where s_ is terminal state
+        r_target = r + v_pred
+
+        s_t, a_t, r_t, r_obs, lstm_s_t, avg_reward, minimize, summaries = self.graph
+        feed_dict = {
+                s_t: s,
+                a_t: a,
+                r_t: r_target,
+                r_obs: r,
+                lstm_s_t: lstm_s,
+                avg_reward: np.array([self.avg_reward]),
+                self.model.inputs[1]: lstm_s,
+                self.model.inputs[0]: s}
         self.session.run(minimize, feed_dict=feed_dict)
+        s = self.session.run(summaries, feed_dict=feed_dict)
+        self.train_writer.add_summary(s, self._n_optimize_runs)
         self._n_optimize_runs += 1
 
     def push_training_episode(self, observation, action, reward, next_observation, discount, mask):
@@ -198,26 +214,47 @@ class A3CBrain(object):
         s_t = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, self.n_inputs))
         a_t = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, self.n_actions))
         r_t = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, 1)) # discounted n step reward
+        r_obs = tf.placeholder(tf.float32, shape=(None, self.n_timesteps, 1)) # observed rewards, for debugging
         lstm_s_t = tf.placeholder(tf.float32, shape=(None, 48))
+        avg_reward = tf.placeholder(tf.float32, shape=(1,))
 
         p_actions, v, _ = model([s_t, lstm_s_t])
 
-        log_prob = tf.log( tf.reduce_sum(p_actions * a_t, axis=2, keep_dims=True) + 1e-10)
+        log_prob = tf.log( tf.reduce_sum( tf.multiply(p_actions, a_t), axis=2, keep_dims=True) + 1e-10)
         advantage = r_t - v
 
-        loss_policy = - log_prob * tf.stop_gradient(advantage)                                                             # maximize policy
-        loss_value  = self.coef_value_loss * tf.square(advantage)                                                          # minimize value error
-        loss_entropy = self.coef_entropy_loss * tf.reduce_sum(p_actions * tf.log(p_actions + 1e-10), axis=2, keep_dims=True)    # maximize entropy (regularization)
+        loss_policy = tf.multiply(-log_prob, tf.stop_gradient(advantage))
+        loss_value  = self.coef_value_loss * tf.square(advantage)
+        loss_entropy = self.coef_entropy_loss * tf.reduce_sum(p_actions * tf.log(p_actions + 1e-10), axis=2, keep_dims=True)
 
         loss_total = tf.reduce_mean(loss_policy + loss_value + loss_entropy)
 
         # optimizer = tf.train.RMSPropOptimizer(self.learning_rate, decay=.99)
         # minimize = optimizer.minimize(loss_total)
+        # optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        # minimize = optimizer.minimize(loss_total)
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        gvs = optimizer.compute_gradients(loss_total)
-        capped_gvs = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gvs]
-        minimize = optimizer.apply_gradients(capped_gvs)
+        gradients, variables = zip(*optimizer.compute_gradients(loss_total))
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+        minimize = optimizer.apply_gradients(zip(clipped_gradients, variables))
 
-        return s_t, a_t, r_t, lstm_s_t, minimize
+        tf.summary.scalar('loss_policy', tf.reduce_mean(loss_policy))
+        tf.summary.scalar('loss_value', tf.reduce_mean(loss_value))
+        tf.summary.scalar('loss_entropy', tf.reduce_mean(loss_entropy))
+        tf.summary.scalar('loss', loss_total)
+        tf.summary.scalar('reward target', tf.reduce_mean(r_t))
+        tf.summary.scalar('reward observed', tf.reduce_mean(r_obs))
+        tf.summary.scalar('avg test score', tf.reduce_mean(avg_reward))
+        tf.summary.scalar('value', tf.reduce_mean(v))
+        summaries = tf.summary.merge_all()
+        self.train_writer = tf.summary.FileWriter(self.tensor_board_directory(), self.session.graph)
+
+        return s_t, a_t, r_t, r_obs, lstm_s_t, avg_reward, minimize, summaries
+
+    def tensor_board_directory(self):
+        datetime_dir = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+        tf_path = os.path.join('/home/andrew/src/bandits/training_reports/', datetime_dir)
+        os.makedirs(tf_path)
+        return tf_path
 
 

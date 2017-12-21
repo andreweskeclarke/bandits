@@ -11,10 +11,9 @@ import time
 
 class A3CAgent(object):
 
-    def __init__(self, n_actions, brain, epsilon=0.0, gamma=0.99, thread_delay=0.001):
+    def __init__(self, n_actions, brain, gamma=0.99, thread_delay=0.001):
         self.n_actions = n_actions
         self.brain = brain
-        self.epsilon = epsilon
         self.gamma = gamma
         self.memory = []
         self._thread_delay = thread_delay
@@ -22,15 +21,13 @@ class A3CAgent(object):
 
     def act(self, observation=None):
         action_probs, _, self.state_h = self.brain.single_prediction(observation, self.state_h)
-        if random.random() < self.epsilon:
-            return random.randint(0, self.n_actions-1)
-        else:
-            return np.random.choice(self.n_actions, p=action_probs)
+        assert not np.any(np.isnan(action_probs))
+        return np.random.choice(self.n_actions, p=action_probs)
 
     def handle_transition(self, observation=None, action=None, reward=0, next_observation=None, done=False):
         one_hot_actions = np.zeros(self.n_actions)
         one_hot_actions[action] = 1
-        self.memory.append((observation, one_hot_actions, reward, next_observation))
+        self.memory.append((observation, one_hot_actions, reward, next_observation, self.state_h))
         if done:
             self.push_to_brain(self.brain, self.memory)
 
@@ -38,6 +35,7 @@ class A3CAgent(object):
         self.memory = list()
 
     def push_to_brain(self, brain, memory):
+        n_look_ahead = 10
         n_inputs = self.brain.n_inputs
         default_o = np.zeros((n_inputs,))
         observations = np.zeros((len(memory), n_inputs))
@@ -46,16 +44,16 @@ class A3CAgent(object):
         next_observations = np.zeros((len(memory), n_inputs))
         discounts = np.zeros((len(memory), 1))
         end_of_episode_mask = np.ones((len(memory), 1))
-        end_of_episode_mask[-1][0] = 0.0
         for i in range(len(memory)):
-            o, a, r, o_ = memory[i]
+            o, a, r, o_, state_h_ = memory[i]
             o = o if o is not None else default_o
             o_ = o_ if o_ is not None else default_o
             r = 0.0
-            for j in range(i, len(memory)):
+            look_ahead = min(i+n_look_ahead, len(memory) - 1)
+            end_of_episode_mask[i][0] = 0.0 if (i+n_look_ahead >= len(memory)) else 1.0
+            for j in range(i, look_ahead):
                 r += memory[j][2] * (self.gamma**(j-i))
-
-            v_discount = self.gamma**(len(memory) - i)
+            v_discount = self.gamma**(look_ahead - i)
 
             observations[i][:] = o.reshape((n_inputs,))
             actions[i][:] = a

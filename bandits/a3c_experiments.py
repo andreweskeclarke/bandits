@@ -53,11 +53,11 @@ def run_training(
     for r in runners:
         r.join()
 
+    n_episodes = sum([r._total_episodes for r in runners])
+    n_trials = sum([r._total_trials for r in runners])
     print('\tCompleted training, encountered %s episodes, %s trials, trained %s times' %
-            (sum([r._total_episodes for r in runners]), 
-             sum([r._total_trials for r in runners]),
-             brain._n_optimize_runs))
-    return brain
+            (n_episodes, n_trials, brain._n_optimize_runs))
+    return brain, n_episodes, n_trials
 
 
 def summarize_results(results, episode_length=experiment_results_generator.EPISODE_LENGTH):

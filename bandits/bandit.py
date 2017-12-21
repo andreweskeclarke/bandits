@@ -26,10 +26,13 @@ class Bandit(object):
         reward = np.random.binomial(1, self.arm_probabilities[int(action)])
         self._steps += 1
         if self._steps < self._episode_length:
+            observation = np.zeros((self.n_inputs(),))
+            observation[int(action)] = 1.0
             if self._include_steps:
-                observation = np.array([action, reward, self._steps])
+                observation[-2] = reward
+                observation[-1] = self._steps
             else:
-                observation = np.array([action, reward])
+                observation[-1] = reward
             done = False
         else:
             observation = None
@@ -49,10 +52,11 @@ class Bandit(object):
         pass
 
     def n_inputs(self):
+        # Input and Outputs include one-hot encoding of actions, the reward, and potentially the step number
         if self._include_steps:
-            return 3
+            return self.n_actions() + 2
         else:
-            return 2
+            return self.n_actions() + 1
 
     def n_actions(self):
         return self.n_arms
@@ -89,10 +93,13 @@ class MultiBandit(object):
         observation, reward, done, info = self._get_env_for_step(self._steps, self.envs, self.episode_length()).step(action)
         self._steps += 1
         if self._steps < self.episode_length():
+            observation = np.zeros((self.n_inputs(),))
+            observation[int(action)] = 1.0
             if self._include_steps:
-                observation = np.array([action, reward, self._steps])
+                observation[-2] = reward
+                observation[-1] = self._steps
             else:
-                observation = np.array([action, reward])
+                observation[-1] = reward
             done = False
         else:
             observation = None

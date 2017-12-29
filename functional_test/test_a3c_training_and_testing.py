@@ -11,6 +11,7 @@ if __name__ == '__main__':
     thread_delay=0.0001
     n_optimizers = 8
     n_runners = 8
+    gamma = 0.5
     brain = None
 
     def generate_env():
@@ -22,14 +23,25 @@ if __name__ == '__main__':
         return env, n_actions, n_inputs
 
     def generate_agent(brain, n_actions):
-        return a3c_agent.A3CAgent(n_actions, brain.n_inputs, brain, thread_delay=thread_delay)
+        return a3c_agent.A3CAgent(
+                n_actions,
+                brain.n_inputs,
+                brain,
+                thread_delay=thread_delay,
+                gamma=gamma)
 
-    def generate_brain(n_timesteps, n_actions, n_inputs):
-        return a3c_brain.A3CBrain(n_actions, n_inputs, n_timesteps, model_name='ONE_LAYER_MLP_MODEL')
+    def generate_brain(n_actions, n_inputs):
+        return a3c_brain.A3CBrain(
+                n_actions,
+                n_inputs,
+                n_timesteps=experiment_results_generator.EPISODE_LENGTH,
+                model_name='GRU_MODEL',
+                batch_size=8,
+                gamma=gamma)
 
-    for i in range(3):
+    for i in range(20):
         t = training_time if i > 0 else 0
-        brain = a3c_experiments.run_training(
+        brain, n_episodes, n_trials = a3c_experiments.run_training(
                 brain=brain,
                 brain_generator=generate_brain,
                 env_generator=generate_env,
@@ -38,6 +50,7 @@ if __name__ == '__main__':
                 n_optimizers=n_optimizers, 
                 n_runners=n_runners,
                 thread_delay=thread_delay)
+        print('Trained for %s episodes contained %s trials' % (n_episodes, n_trials))
         results = a3c_experiments.run_testing(
                 brain=brain,
                 env_generator=generate_env,
@@ -45,7 +58,9 @@ if __name__ == '__main__':
                 save_dir=experiment_results_generator.build_experiment_path(__file__),
                 n_episodes=50)
         average_reward, std_reward = a3c_experiments.summarize_results(results)
-        brain.reset()
+        brain.avg_reward = average_reward
         print('After training iteraton %s, average reward in testing is %s (+/-%s)' % (i, average_reward, std_reward))
+        if average_reward == 1.0:
+            break
 
     assert average_reward >= 0.99, 'The observed reward (%s) was lower than expected (%s)' % (average_reward, 1.0)

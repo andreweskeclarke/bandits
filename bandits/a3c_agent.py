@@ -11,7 +11,7 @@ import time
 
 class A3CAgent(object):
 
-    def __init__(self, n_actions, n_inputs, brain, gamma=0.99, thread_delay=0.001, n_look_ahead=1):
+    def __init__(self, n_actions, n_inputs, brain, gamma=0.9, thread_delay=0.001, n_look_ahead=1):
         self.n_actions = n_actions
         self.brain = brain
         self.n_inputs = n_inputs

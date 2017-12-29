@@ -9,49 +9,37 @@ from keras.layers import *
 from keras import backend as K
 
 
-def one_layer_mlp_model(n_inputs, n_actions, n_timesteps):
-    l_input = Input(batch_shape=(None, 1, n_inputs))
-    l_dense = Dense(8*n_actions, activation='relu')(l_input)
-
-    out_actions = Dense(n_actions, activation='softmax')(l_dense)
-    out_value   = Dense(1, activation='linear')(l_dense)
-
-    model = Model(inputs=[l_input], outputs=[out_actions, out_value])
-    model._make_predict_function()    # have to initialize before threading
-    return model
-
-
-def two_layer_mlp_model(n_inputs, n_actions, n_timesteps):
-    l_input = Input(batch_shape=(None, 1, n_inputs))
-    l_dense1 = Dense(8*n_inputs, activation='relu')(l_input)
-    l_dense = Dense(8*n_actions, activation='relu')(l_dense1)
-
-    out_actions = Dense(n_actions, activation='softmax')(l_dense)
-    out_value   = Dense(1, activation='linear')(l_dense)
-
-    model = Model(inputs=[l_input], outputs=[out_actions, out_value])
-    model._make_predict_function()    # have to initialize before threading
-    return model
-
-
 def lstm_model(n_inputs, n_actions, n_timesteps):
     l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
-    l_lstm_input = Input(batch_shape=(None, 48))
-    l_lstm = GRU(48, return_sequences=True, activation='tanh', recurrent_activation='tanh')(l_input, initial_state=l_lstm_input)
+    l_lstm_input_1 = Input(batch_shape=(None, 48))
+    l_lstm_input_2 = Input(batch_shape=(None, 48))
+    l_lstm = LSTM(48, return_sequences=True, activation='tanh', recurrent_activation='tanh')(l_input, initial_state=(l_lstm_input_1, l_lstm_input_2))
 
     out_actions = Dense(n_actions, activation='softmax')(l_lstm)
     out_value   = Dense(1, activation='linear')(l_lstm)
 
-    # Return the full LSTM output sequence - so people can reuse the hidden LSTM state as required
-    model = Model(inputs=[l_input, l_lstm_input], outputs=[out_actions, out_value, l_lstm])
+    model = Model(inputs=[l_input, l_lstm_input_1, l_lstm_input_2], outputs=[out_actions, out_value, l_lstm])
+    model._make_predict_function()    # have to initialize before threading
+    return model
+
+
+def gru_model(n_inputs, n_actions, n_timesteps):
+    l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
+    l_gru_input = Input(batch_shape=(None, 48))
+    # l_gru = GRU(48, return_sequences=True, activation='tanh', recurrent_activation='tanh')(l_input, initial_state=l_gru_input)
+    l_gru = CuDNNGRU(48, return_sequences=True)(l_input, initial_state=l_gru_input)
+
+    out_actions = Dense(n_actions, activation='softmax')(l_gru)
+    out_value   = Dense(1, activation='linear')(l_gru)
+
+    model = Model(inputs=[l_input, l_gru_input], outputs=[out_actions, out_value, l_gru])
     model._make_predict_function()    # have to initialize before threading
     return model
 
 
 MODELS = {
-    'ONE_LAYER_MLP_MODEL': one_layer_mlp_model,
-    'TWO_LAYER_MLP_MODEL': two_layer_mlp_model,
     'LSTM_MODEL': lstm_model,
+    'GRU_MODEL': gru_model,
     }
 
 
@@ -67,7 +55,7 @@ class A3CBrain(object):
             n_timesteps,
             learning_rate=5e-3,
             batch_size=32,
-            coef_value_loss=0.5,
+            coef_value_loss=0.05,
             coef_entropy_loss=0.01,
             gamma=0.9,
             model_name='TWO_LAYER_MLP_MODEL',
@@ -172,8 +160,7 @@ class A3CBrain(object):
 
         if len(s) > 5*self.batch_size: print("Optimizer alert! Minimizing batch of %d" % len(s))
 
-        v = self.predict_v(s)
-        v[:,:-self.n_look_ahead,:] = v[:,self.n_look_ahead:,:]
+        v = self.predict_v(s_)
         v_pred = np.multiply(np.multiply(discount, v), s_mask) # set v to 0 where s_ is terminal state
         r_target = r + v_pred
 
@@ -226,9 +213,11 @@ class A3CBrain(object):
         # minimize = optimizer.minimize(loss_total)
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         gradients, variables = zip(*optimizer.compute_gradients(loss_total))
-        tf.summary.histogram('gradients', gradients)
-        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-        tf.summary.histogram('clipped_gradients', clipped_gradients)
+        for g in gradients:
+            tf.summary.histogram(g.name, g)
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 25.0)
+        for g in clipped_gradients:
+            tf.summary.histogram('clipped_' + g.name, g)
         minimize = optimizer.apply_gradients(zip(clipped_gradients, variables))
 
         tf.summary.scalar('loss_policy', tf.reduce_mean(loss_policy))
@@ -239,6 +228,7 @@ class A3CBrain(object):
         tf.summary.scalar('reward observed', tf.reduce_mean(r_obs))
         tf.summary.scalar('avg test score', tf.reduce_mean(avg_reward))
         tf.summary.scalar('value', tf.reduce_mean(v))
+        tf.summary.histogram('value histogram', tf.reduce_mean(v))
         summaries = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.tensor_board_directory(), self.session.graph)
 

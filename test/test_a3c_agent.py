@@ -36,176 +36,150 @@ class TestAsynchOptimizer(unittest.TestCase):
 class TestA3CAgent(unittest.TestCase):
 
     def test_act_deterministically_greedy(self):
+        null_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+
         brain = mock.Mock()
         brain.configure_mock(**{
-            'predict_action.return_value': np.array([1.0, 0.0, 0.0, 0.0]),
+            'single_prediction.return_value': (np.array([1.0, 0.0, 0.0, 0.0]), None, null_state),
             })
-        agent = A3CAgent(4, brain)
+        agent = A3CAgent(4, 5, brain)
         actions = np.zeros(4)
         for i in range(100):
-            a = agent.act(observation=np.array([0.0, 0.0]))
+            a = agent.act(observation=null_state)
             actions[a] += 1
         self.assertEqual(100, actions[0])
 
         brain = mock.Mock()
         brain.configure_mock(**{
-            'predict_action.return_value': np.array([0.0, 0.0, 0.0, 1.0]),
+            'single_prediction.return_value': (np.array([0.0, 0.0, 0.0, 1.0]), None, null_state),
             })
-        agent = A3CAgent(4, brain)
+        agent = A3CAgent(4, 5, brain)
         actions = np.zeros(4)
         for i in range(100):
-            a = agent.act(observation=np.array([0.0, 0.0]))
+            a = agent.act(observation=null_state)
             actions[a] += 1
         self.assertEqual(100, actions[3])
 
         brain = mock.Mock()
         brain.configure_mock(**{
-            'predict_action.return_value': np.array([1.0, 0.0, 0.0, 0.0], ndmin=2),
+            'single_prediction.return_value': (np.array([1.0, 0.0, 0.0, 0.0], ndmin=2), None, null_state),
             })
-        agent = A3CAgent(4, brain)
+        agent = A3CAgent(4, 5, brain)
         actions = np.zeros(4)
         for i in range(100):
-            a = agent.act(observation=np.array([0.0, 0.0]))
+            a = agent.act(observation=null_state)
             actions[a] += 1
         self.assertEqual(100, actions[0])
 
         brain = mock.Mock()
         brain.configure_mock(**{
-            'predict_action.return_value': np.array([0.0, 0.0, 0.0, 1.0], ndmin=2),
+            'single_prediction.return_value': (np.array([0.0, 0.0, 0.0, 1.0], ndmin=2), None, null_state),
             })
-        agent = A3CAgent(4, brain)
+        agent = A3CAgent(4, 5, brain)
         actions = np.zeros(4)
         for i in range(100):
-            a = agent.act(observation=np.array([0.0, 0.0]))
+            a = agent.act(observation=null_state)
             actions[a] += 1
         self.assertEqual(100, actions[3])
 
 
-    def test_act_by_fully_exploring(self):
-        brain = mock.Mock()
-        brain.configure_mock(**{
-            'predict_action.return_value': np.array([1.0, 0.0, 0.0, 0.0]),
-            })
-        agent = A3CAgent(4, brain, epsilon=1.0)
-        actions = np.zeros(4)
-        for i in range(100):
-            a = agent.act(observation=np.array([0.0, 0.0]))
-            actions[a] += 1
+empty_obs = np.array([0, 0, 0])
+obs1 = np.array([0, 1, 1])
+obs2 = np.array([1, 0, 0])
+obs3 = np.array([0, 1, 1])
+action1 = np.array([0, 1])
+action2 = np.array([1, 0])
+action3 = np.array([0, 1])
+action4 = np.array([0, 1])
+reward1 = 1
+reward2 = 0
+reward3 = 1
+reward4 = 1
+null_lstm_state = np.zeros(3)
 
-        self.assertTrue((actions > 10).all())
+class TestA3CAgentPushingTrainingEpisodes(unittest.TestCase):
 
-    def test_push_discounted_rewards_to_brain_with_gamma_1(self):
+    def test_push_discounted_rewards_to_brain_with_gamma_half_and_single_multistep_lookahead(self):
         brain = mock.Mock()
-        agent = A3CAgent(2, brain, gamma=1)
-        obs1 = np.array([1, 1])
-        obs2 = np.array([0, 1])
-        obs3 = np.array([1, 0])
-        action1 = np.array([0, 1])
-        action2 = np.array([1, 0])
-        action3 = np.array([0, 1])
-        reward1 = 1
-        reward2 = 1
-        reward3 = 1
+        gamma = 0.5
+        n_look_ahead = 1
+        agent = A3CAgent(2, 3, brain, gamma=gamma, n_look_ahead=n_look_ahead)
 
         agent.push_to_brain(brain, [
-            (obs1, action1, reward1, obs2),
-            (obs2, action2, reward2, obs3),
-            (obs3, action3, reward3, None),
+            (None, action1, reward1, obs1, null_lstm_state),
+            (obs1, action2, reward2, obs2, null_lstm_state),
+            (obs2, action3, reward3, obs3, null_lstm_state),
+            (obs3, action4, reward4, None, null_lstm_state),
             ])
 
-        self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
-        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
-        self.assertTrue(np.equal(action1, brain.push_training_example.call_args_list[0][1]['action']).all())
-        self.assertEqual(1.0, brain.push_training_example.call_args_list[0][1]['discount'])
-        self.assertEqual(3.0, brain.push_training_example.call_args_list[0][1]['reward'])
+        call_args = brain.push_training_episode.call_args_list[0][1]
+        self.assertTrue(np.equal(call_args['observation'], np.array([empty_obs, obs1, obs2, obs3])).all())
+        self.assertTrue(np.equal(call_args['action'], np.array([action1, action2, action3, action4])).all())
+        self.assertTrue(np.equal(call_args['next_observation'], np.array([obs1, obs2, obs3, empty_obs])).all())
+        self.assertTrue(np.equal(call_args['mask'], np.array([1, 1, 1, 0], ndmin=2).T).all())
+        self.assertTrue(np.equal(call_args['reward'], 
+            np.array([reward1, reward2, reward3, reward4], ndmin=2).T).all())
+        self.assertTrue(np.equal(call_args['discount'], 
+            np.array([gamma**1, gamma**1, gamma**1, gamma**1], ndmin=2).T).all())
 
-        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
-        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
-        self.assertTrue(np.equal(action2, brain.push_training_example.call_args_list[1][1]['action']).all())
-        self.assertEqual(1.0, brain.push_training_example.call_args_list[1][1]['discount'])
-        self.assertEqual(2.0, brain.push_training_example.call_args_list[1][1]['reward'])
 
-        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
-        self.assertTrue(np.equal(None, brain.push_training_example.call_args_list[2][1]['next_observation']).all())
-        self.assertTrue(np.equal(action3, brain.push_training_example.call_args_list[2][1]['action']).all())
-        self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['discount'])
-        self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
-
-    def test_push_discounted_rewards_to_brain_with_gamma_half(self):
+    def test_push_discounted_rewards_to_brain_with_gamma_half_and_three_multistep_lookahead(self):
         brain = mock.Mock()
-        agent = A3CAgent(2, brain, gamma=0.5)
-        obs1 = np.array([1, 1])
-        obs2 = np.array([0, 1])
-        obs3 = np.array([1, 0])
-        action1 = np.array([0, 1])
-        action2 = np.array([1, 0])
-        action3 = np.array([0, 1])
-        reward1 = 1
-        reward2 = 1
-        reward3 = 1
+        gamma = 0.5
+        n_look_ahead = 3
+        agent = A3CAgent(2, 3, brain, gamma=gamma, n_look_ahead=n_look_ahead)
 
         agent.push_to_brain(brain, [
-            (obs1, action1, reward1, obs2),
-            (obs2, action2, reward2, obs3),
-            (obs3, action3, reward3, None),
+            (None, action1, reward1, obs1, null_lstm_state),
+            (obs1, action2, reward2, obs2, null_lstm_state),
+            (obs2, action3, reward3, obs3, null_lstm_state),
+            (obs3, action4, reward4, None, null_lstm_state),
             ])
 
-        self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
-        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
-        self.assertTrue(np.equal(action1, brain.push_training_example.call_args_list[0][1]['action']).all())
-        self.assertEqual(1/8., brain.push_training_example.call_args_list[0][1]['discount'])
-        self.assertEqual(1.75, brain.push_training_example.call_args_list[0][1]['reward'])
+        call_args = brain.push_training_episode.call_args_list[0][1]
+        self.assertTrue(np.equal(call_args['observation'], np.array([empty_obs, obs1, obs2, obs3])).all())
+        self.assertTrue(np.equal(call_args['action'], np.array([action1, action2, action3, action4])).all())
+        self.assertTrue(np.equal(call_args['next_observation'], np.array([obs1, obs2, obs3, empty_obs])).all())
+        self.assertTrue(np.equal(call_args['mask'], np.array([1, 0, 0, 0], ndmin=2).T).all())
+        self.assertTrue(np.equal(call_args['reward'], 
+            np.array([
+                reward1+gamma*reward2+gamma*gamma*reward3,
+                reward2+gamma*reward3+gamma*gamma*reward4,
+                reward3+gamma*reward4,
+                reward4
+                ], ndmin=2).T).all())
+        self.assertTrue(np.equal(call_args['discount'],
+            np.array([gamma**3, gamma**3, gamma**2, gamma**1], ndmin=2).T).all())
 
-        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
-        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
-        self.assertTrue(np.equal(action2, brain.push_training_example.call_args_list[1][1]['action']).all())
-        self.assertEqual(1/4., brain.push_training_example.call_args_list[1][1]['discount'])
-        self.assertEqual(1.5, brain.push_training_example.call_args_list[1][1]['reward'])
-
-        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
-        self.assertTrue(np.equal(None, brain.push_training_example.call_args_list[2][1]['next_observation']).all())
-        self.assertTrue(np.equal(action3, brain.push_training_example.call_args_list[2][1]['action']).all())
-        self.assertEqual(1/2., brain.push_training_example.call_args_list[2][1]['discount'])
-        self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
 
     def test_handle_transitions_with_end_of_episode(self):
         brain = mock.Mock()
-        agent = A3CAgent(2, brain, gamma=0.5)
-        obs1 = np.array([1, 1])
-        obs2 = np.array([0, 1])
-        obs3 = np.array([1, 0])
-        action1 = 1
-        action2 = 0
-        action3 = 1
-        expected_action1 = np.array([0, 1])
-        expected_action2 = np.array([1, 0])
-        expected_action3 = np.array([0, 1])
-        reward1 = 1
-        reward2 = 1
-        reward3 = 1
+        gamma = 0.5
+        n_look_ahead = 3
+        agent = A3CAgent(2, 3, brain, gamma=gamma, n_look_ahead=n_look_ahead)
+        agent.state_h = null_lstm_state
 
-        agent.handle_transition(observation=obs1, action=action1, reward=reward1, next_observation=obs2, done=False)
-        agent.handle_transition(observation=obs2, action=action2, reward=reward2, next_observation=obs3, done=False)
-        brain.push_training_example.assert_not_called()
-        agent.handle_transition(observation=obs3, action=action3, reward=reward3, next_observation=None, done=True)
+        agent.handle_transition(observation=None, action=np.argmax(action1), reward=reward1, next_observation=obs1, done=False)
+        agent.handle_transition(observation=obs1, action=np.argmax(action2), reward=reward2, next_observation=obs2, done=False)
+        agent.handle_transition(observation=obs2, action=np.argmax(action3), reward=reward3, next_observation=obs3, done=False)
+        brain.push_training_episode.assert_not_called()
+        agent.handle_transition(observation=obs3, action=np.argmax(action4), reward=reward4, next_observation=None, done=True)
+        brain.push_training_episode.assert_called()
 
-        self.assertTrue(np.equal(obs1, brain.push_training_example.call_args_list[0][1]['observation']).all())
-        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[0][1]['next_observation']).all())
-        self.assertTrue(np.equal(expected_action1, brain.push_training_example.call_args_list[0][1]['action']).all())
-        self.assertEqual(1/8., brain.push_training_example.call_args_list[0][1]['discount'])
-        self.assertEqual(1.75, brain.push_training_example.call_args_list[0][1]['reward'])
-
-        self.assertTrue(np.equal(obs2, brain.push_training_example.call_args_list[1][1]['observation']).all())
-        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[1][1]['next_observation']).all())
-        self.assertTrue(np.equal(expected_action2, brain.push_training_example.call_args_list[1][1]['action']).all())
-        self.assertEqual(1/4., brain.push_training_example.call_args_list[1][1]['discount'])
-        self.assertEqual(1.5, brain.push_training_example.call_args_list[1][1]['reward'])
-
-        self.assertTrue(np.equal(obs3, brain.push_training_example.call_args_list[2][1]['observation']).all())
-        self.assertTrue(np.equal(None, brain.push_training_example.call_args_list[2][1]['next_observation']).all())
-        self.assertTrue(np.equal(expected_action3, brain.push_training_example.call_args_list[2][1]['action']).all())
-        self.assertEqual(1/2., brain.push_training_example.call_args_list[2][1]['discount'])
-        self.assertEqual(1.0, brain.push_training_example.call_args_list[2][1]['reward'])
+        call_args = brain.push_training_episode.call_args_list[0][1]
+        self.assertTrue(np.equal(call_args['observation'], np.array([empty_obs, obs1, obs2, obs3])).all())
+        self.assertTrue(np.equal(call_args['action'], np.array([action1, action2, action3, action4])).all())
+        self.assertTrue(np.equal(call_args['next_observation'], np.array([obs1, obs2, obs3, empty_obs])).all())
+        self.assertTrue(np.equal(call_args['mask'], np.array([1, 0, 0, 0], ndmin=2).T).all())
+        self.assertTrue(np.equal(call_args['reward'], 
+            np.array([
+                reward1+gamma*reward2+gamma*gamma*reward3,
+                reward2+gamma*reward3+gamma*gamma*reward4,
+                reward3+gamma*reward4,
+                reward4
+                ], ndmin=2).T).all())
+        self.assertTrue(np.equal(call_args['discount'],
+            np.array([gamma**3, gamma**3, gamma**2, gamma**1], ndmin=2).T).all())
 
 
 class TestAsynchRunner(unittest.TestCase):

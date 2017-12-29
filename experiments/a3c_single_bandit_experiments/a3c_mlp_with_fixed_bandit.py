@@ -21,7 +21,7 @@ if __name__ == '__main__':
         return env, n_actions, n_inputs
 
     def generate_agent(brain, n_actions):
-        return a3c_agent.A3CAgent(n_actions, brain, thread_delay=thread_delay)
+        return a3c_agent.A3CAgent(n_actions, brain.n_inputs, brain, thread_delay=thread_delay)
 
     def generate_brain(n_actions, n_inputs):
         return a3c_brain.A3CBrain(n_actions=n_actions, n_inputs=n_inputs, n_timesteps=experiment_results_generator.EPISODE_LENGTH, model_name='TWO_LAYER_MLP_MODEL')

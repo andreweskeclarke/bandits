@@ -2,6 +2,7 @@ import os
 import datetime as dt
 import threading
 import tensorflow as tf
+import random
 
 from keras.models import *
 from keras.layers import *
@@ -36,11 +37,7 @@ def two_layer_mlp_model(n_inputs, n_actions, n_timesteps):
 def lstm_model(n_inputs, n_actions, n_timesteps):
     l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
     l_lstm_input = Input(batch_shape=(None, 48))
-    l_lstm = GRU(48,
-            return_sequences=True,
-            recurrent_activation='sigmoid',
-            activation='tanh')\
-                    (l_input, initial_state=l_lstm_input)
+    l_lstm = GRU(48, return_sequences=True, activation='tanh', recurrent_activation='tanh')(l_input, initial_state=l_lstm_input)
 
     out_actions = Dense(n_actions, activation='softmax')(l_lstm)
     out_value   = Dense(1, activation='linear')(l_lstm)
@@ -73,7 +70,8 @@ class A3CBrain(object):
             coef_value_loss=0.5,
             coef_entropy_loss=0.01,
             gamma=0.9,
-            model_name='TWO_LAYER_MLP_MODEL'):
+            model_name='TWO_LAYER_MLP_MODEL',
+            n_look_ahead=3):
         self.n_actions = n_actions
         self.n_inputs = n_inputs
         self.n_timesteps = n_timesteps
@@ -93,6 +91,7 @@ class A3CBrain(object):
         self.gamma = gamma
         self._n_optimize_runs = 0
         self.avg_reward = 0.0
+        self.n_look_ahead = n_look_ahead
 
         self.session = tf.Session()
         K.set_session(self.session)
@@ -161,16 +160,8 @@ class A3CBrain(object):
             s_mask = self.training_data['mask']
 
             # Clear training data
-            self.training_data = {
-                    'observation': list(),
-                    'action': list(),
-                    'reward': list(),
-                    'next_observation': list(),
-                    'discount': list(),
-                    'mask': list(),
-                    }
+            self.reset()
 
-        n_look_ahead = 10
         s = np.stack(s)
         a = np.stack(a)
         r = np.stack(r)
@@ -182,7 +173,7 @@ class A3CBrain(object):
         if len(s) > 5*self.batch_size: print("Optimizer alert! Minimizing batch of %d" % len(s))
 
         v = self.predict_v(s)
-        v[:,:-n_look_ahead,:] = v[:,n_look_ahead:,:]
+        v[:,:-self.n_look_ahead,:] = v[:,self.n_look_ahead:,:]
         v_pred = np.multiply(np.multiply(discount, v), s_mask) # set v to 0 where s_ is terminal state
         r_target = r + v_pred
 
@@ -235,7 +226,9 @@ class A3CBrain(object):
         # minimize = optimizer.minimize(loss_total)
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         gradients, variables = zip(*optimizer.compute_gradients(loss_total))
+        tf.summary.histogram('gradients', gradients)
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
+        tf.summary.histogram('clipped_gradients', clipped_gradients)
         minimize = optimizer.apply_gradients(zip(clipped_gradients, variables))
 
         tf.summary.scalar('loss_policy', tf.reduce_mean(loss_policy))
@@ -253,7 +246,8 @@ class A3CBrain(object):
 
     def tensor_board_directory(self):
         datetime_dir = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
-        tf_path = os.path.join('/home/andrew/src/bandits/training_reports/', datetime_dir)
+        # tf_path = os.path.join('/home/andrew/src/bandits/training_reports/', datetime_dir)
+        tf_path = os.path.join('/tmp/training_reports/', datetime_dir)
         os.makedirs(tf_path)
         return tf_path
 

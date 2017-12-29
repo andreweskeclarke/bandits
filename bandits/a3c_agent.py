@@ -11,23 +11,27 @@ import time
 
 class A3CAgent(object):
 
-    def __init__(self, n_actions, brain, gamma=0.99, thread_delay=0.001):
+    def __init__(self, n_actions, n_inputs, brain, gamma=0.99, thread_delay=0.001, n_look_ahead=1):
         self.n_actions = n_actions
         self.brain = brain
+        self.n_inputs = n_inputs
         self.gamma = gamma
         self.memory = []
         self._thread_delay = thread_delay
         self.state_h = None
+        self.n_look_ahead = n_look_ahead
 
     def act(self, observation=None):
         action_probs, _, self.state_h = self.brain.single_prediction(observation, self.state_h)
         assert not np.any(np.isnan(action_probs))
-        return np.random.choice(self.n_actions, p=action_probs)
+        action = np.random.choice(self.n_actions, p=action_probs.flatten())
+        assert action < self.n_actions
+        return action
 
     def handle_transition(self, observation=None, action=None, reward=0, next_observation=None, done=False):
         one_hot_actions = np.zeros(self.n_actions)
         one_hot_actions[action] = 1
-        self.memory.append((observation, one_hot_actions, reward, next_observation, self.state_h))
+        self.memory.append((observation, one_hot_actions, reward, next_observation, self.state_h.copy()))
         if done:
             self.push_to_brain(self.brain, self.memory)
 
@@ -35,30 +39,30 @@ class A3CAgent(object):
         self.memory = list()
 
     def push_to_brain(self, brain, memory):
-        n_look_ahead = 10
-        n_inputs = self.brain.n_inputs
-        default_o = np.zeros((n_inputs,))
-        observations = np.zeros((len(memory), n_inputs))
+        default_o = np.zeros((self.n_inputs,))
+        observations = np.zeros((len(memory), self.n_inputs))
         actions = np.zeros((len(memory), self.n_actions))
         rewards = np.zeros((len(memory), 1))
-        next_observations = np.zeros((len(memory), n_inputs))
+        next_observations = np.zeros((len(memory), self.n_inputs))
         discounts = np.zeros((len(memory), 1))
         end_of_episode_mask = np.ones((len(memory), 1))
         for i in range(len(memory)):
             o, a, r, o_, state_h_ = memory[i]
             o = o if o is not None else default_o
             o_ = o_ if o_ is not None else default_o
+            end_of_episode_mask[i][0] = 0.0 if (i+self.n_look_ahead >= len(memory)) else 1.0
+
+            # Discounted reward calculation
             r = 0.0
-            look_ahead = min(i+n_look_ahead, len(memory) - 1)
-            end_of_episode_mask[i][0] = 0.0 if (i+n_look_ahead >= len(memory)) else 1.0
+            look_ahead = min(i+self.n_look_ahead, len(memory))
             for j in range(i, look_ahead):
                 r += memory[j][2] * (self.gamma**(j-i))
             v_discount = self.gamma**(look_ahead - i)
 
-            observations[i][:] = o.reshape((n_inputs,))
+            observations[i][:] = o.reshape((self.n_inputs,))
             actions[i][:] = a
             rewards[i][0] = r
-            next_observations[i][:] = o_.reshape((n_inputs,))
+            next_observations[i][:] = o_.reshape((self.n_inputs,))
             discounts[i][0] = v_discount
         brain.push_training_episode(**{
                 'observation': np.array(observations),

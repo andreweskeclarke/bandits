@@ -14,8 +14,9 @@ if __name__ == '__main__':
     brain = None
     episode_length = 25
 
+    n_look_ahead = 2
     gamma=0.8
-    learning_rate = 1e-3
+    learning_rate = 2*(1e-4)
     batch_size = 32
     coef_value_loss = 0.1
     coef_entropy_loss = 0.05
@@ -35,9 +36,11 @@ if __name__ == '__main__':
     def generate_agent(brain, n_actions):
         return a3c_agent.A3CAgent(
                 n_actions,
+                brain.n_inputs,
                 brain,
                 thread_delay=thread_delay,
-                gamma=gamma)
+                gamma=gamma,
+                n_look_ahead=n_look_ahead)
 
     def generate_brain(n_actions, n_inputs):
         print('GENERATE NEW BRAIN')
@@ -50,9 +53,10 @@ if __name__ == '__main__':
                 coef_value_loss=coef_value_loss,
                 coef_entropy_loss=coef_entropy_loss,
                 gamma=gamma,
-                learning_rate=learning_rate)
+                learning_rate=learning_rate,
+                n_look_ahead=n_look_ahead)
 
-    while n_total_training_episodes < 5000000:
+    while n_total_training_episodes < 1000:
         t = training_time if n_total_training_episodes > 0 else 0
         brain, n_episodes, n_trials = a3c_experiments.run_training(
                 brain=brain,

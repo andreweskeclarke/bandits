@@ -18,16 +18,15 @@ if __name__ == '__main__':
     gamma=0.8
     learning_rate = 2*(1e-4)
     batch_size = 32
-    coef_value_loss = 0.1
-    coef_entropy_loss = 0.05
-    n_training_epochs = 20
+    coef_value_loss = 0.05
+    coef_entropy_loss = 0.5
 
     n_total_training_episodes = 0
     n_testing_episodes = 100
     i = 0
 
     def generate_env():
-        env = [bandit.easy_bandit()]
+        env = [bandit.fixed_bandit()]
         env = bandit.MultiBandit(env, episode_length=episode_length, include_steps=True)
         n_actions = env.n_actions()
         n_inputs = env.n_inputs()
@@ -48,7 +47,7 @@ if __name__ == '__main__':
                 n_actions=n_actions,
                 n_inputs=n_inputs,
                 n_timesteps=episode_length,
-                model_name='LSTM_MODEL',
+                model_name='GRU_MODEL',
                 batch_size=batch_size,
                 coef_value_loss=coef_value_loss,
                 coef_entropy_loss=coef_entropy_loss,
@@ -56,7 +55,7 @@ if __name__ == '__main__':
                 learning_rate=learning_rate,
                 n_look_ahead=n_look_ahead)
 
-    while n_total_training_episodes < 1000:
+    while n_total_training_episodes < 1000000:
         t = training_time if n_total_training_episodes > 0 else 0
         brain, n_episodes, n_trials = a3c_experiments.run_training(
                 brain=brain,

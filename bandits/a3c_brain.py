@@ -26,8 +26,9 @@ def lstm_model(n_inputs, n_actions, n_timesteps):
 def gru_model(n_inputs, n_actions, n_timesteps):
     l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
     l_gru_input = Input(batch_shape=(None, 48))
-    # l_gru = GRU(48, return_sequences=True, activation='tanh', recurrent_activation='tanh')(l_input, initial_state=l_gru_input)
     l_gru = CuDNNGRU(48, return_sequences=True)(l_input, initial_state=l_gru_input)
+
+    tf.summary.histogram('l_gru', l_gru)
 
     out_actions = Dense(n_actions, activation='softmax')(l_gru)
     out_value   = Dense(1, activation='linear')(l_gru)
@@ -215,7 +216,7 @@ class A3CBrain(object):
         gradients, variables = zip(*optimizer.compute_gradients(loss_total))
         for g in gradients:
             tf.summary.histogram(g.name, g)
-        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 25.0)
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
         for g in clipped_gradients:
             tf.summary.histogram('clipped_' + g.name, g)
         minimize = optimizer.apply_gradients(zip(clipped_gradients, variables))

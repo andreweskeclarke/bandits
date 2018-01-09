@@ -90,7 +90,7 @@ class MultiBandit(object):
         if self._steps >= self.episode_length():
             raise ValueError('This environment has been exhausted, please reset()')
 
-        observation, reward, done, info = self._get_env_for_step(self._steps, self.envs, self.episode_length()).step(action)
+        _, reward, done, info = self._get_env_for_step(self._steps, self.envs, self.episode_length()).step(action)
         self._steps += 1
         if self._steps < self.episode_length():
             observation = np.zeros((self.n_inputs(),))

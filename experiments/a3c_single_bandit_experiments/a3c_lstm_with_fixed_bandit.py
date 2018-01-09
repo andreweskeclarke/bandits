@@ -12,14 +12,14 @@ if __name__ == '__main__':
     n_optimizers = 8
     n_runners = 8
     brain = None
-    episode_length = 25
+    episode_length = 100
 
     n_look_ahead = 2
     gamma=0.8
     learning_rate = 2*(1e-4)
-    batch_size = 32
-    coef_value_loss = 0.05
-    coef_entropy_loss = 0.5
+    batch_size = 1
+    coef_value_loss = 0.5
+    coef_entropy_loss = 0.05
 
     n_total_training_episodes = 0
     n_testing_episodes = 100
@@ -55,7 +55,7 @@ if __name__ == '__main__':
                 learning_rate=learning_rate,
                 n_look_ahead=n_look_ahead)
 
-    while n_total_training_episodes < 1000000:
+    while True:
         t = training_time if n_total_training_episodes > 0 else 0
         brain, n_episodes, n_trials = a3c_experiments.run_training(
                 brain=brain,

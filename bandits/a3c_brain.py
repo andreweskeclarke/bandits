@@ -26,12 +26,18 @@ def lstm_model(n_inputs, n_actions, n_timesteps):
 def gru_model(n_inputs, n_actions, n_timesteps):
     l_input = Input(batch_shape=(None, n_timesteps, n_inputs))
     l_gru_input = Input(batch_shape=(None, 48))
+
     l_gru = CuDNNGRU(48, return_sequences=True)(l_input, initial_state=l_gru_input)
+    tf.summary.histogram('value/l_gru', l_gru)
 
-    tf.summary.histogram('l_gru', l_gru)
+    l_dense = Dense(48)(l_gru)
+    tf.summary.histogram('value/l_dense', l_dense)
 
-    out_actions = Dense(n_actions, activation='softmax')(l_gru)
-    out_value   = Dense(1, activation='linear')(l_gru)
+    out_actions = Dense(n_actions, activation='softmax')(l_dense)
+    tf.summary.histogram('value/out_actions', out_actions)
+
+    out_value   = Dense(1, activation='linear')(l_dense)
+    tf.summary.histogram('value/out_value', out_value)
 
     model = Model(inputs=[l_input, l_gru_input], outputs=[out_actions, out_value, l_gru])
     model._make_predict_function()    # have to initialize before threading
@@ -237,8 +243,8 @@ class A3CBrain(object):
 
     def tensor_board_directory(self):
         datetime_dir = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
-        # tf_path = os.path.join('/home/andrew/src/bandits/training_reports/', datetime_dir)
-        tf_path = os.path.join('/tmp/training_reports/', datetime_dir)
+        tf_path = os.path.join('/home/andrew/src/bandits/training_reports/', datetime_dir)
+        # tf_path = os.path.join('/tmp/training_reports/', datetime_dir)
         os.makedirs(tf_path)
         return tf_path
 

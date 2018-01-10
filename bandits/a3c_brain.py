@@ -1,3 +1,5 @@
+import io
+import subprocess
 import os
 import datetime as dt
 import threading
@@ -28,16 +30,16 @@ def gru_model(n_inputs, n_actions, n_timesteps):
     l_gru_input = Input(batch_shape=(None, 48))
 
     l_gru = CuDNNGRU(48, return_sequences=True)(l_input, initial_state=l_gru_input)
-    tf.summary.histogram('value/l_gru', l_gru)
+    # tf.summary.histogram('value/l_gru', l_gru)
 
     l_dense = Dense(48)(l_gru)
-    tf.summary.histogram('value/l_dense', l_dense)
+    # tf.summary.histogram('value/l_dense', l_dense)
 
     out_actions = Dense(n_actions, activation='softmax')(l_dense)
-    tf.summary.histogram('value/out_actions', out_actions)
+    # tf.summary.histogram('value/out_actions', out_actions)
 
     out_value   = Dense(1, activation='linear')(l_dense)
-    tf.summary.histogram('value/out_value', out_value)
+    # tf.summary.histogram('value/out_value', out_value)
 
     model = Model(inputs=[l_input, l_gru_input], outputs=[out_actions, out_value, l_gru])
     model._make_predict_function()    # have to initialize before threading
@@ -220,11 +222,11 @@ class A3CBrain(object):
         # minimize = optimizer.minimize(loss_total)
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         gradients, variables = zip(*optimizer.compute_gradients(loss_total))
-        for g in gradients:
-            tf.summary.histogram(g.name, g)
+        # for g in gradients:
+        #     tf.summary.histogram(g.name, g)
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, 1.0)
-        for g in clipped_gradients:
-            tf.summary.histogram('clipped_' + g.name, g)
+        # for g in clipped_gradients:
+        #     tf.summary.histogram('clipped_' + g.name, g)
         minimize = optimizer.apply_gradients(zip(clipped_gradients, variables))
 
         tf.summary.scalar('loss_policy', tf.reduce_mean(loss_policy))
@@ -237,7 +239,9 @@ class A3CBrain(object):
         tf.summary.scalar('value', tf.reduce_mean(v))
         tf.summary.histogram('value histogram', tf.reduce_mean(v))
         summaries = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter(self.tensor_board_directory(), self.session.graph)
+        output_dir = self.tensor_board_directory()
+        self.train_writer = tf.summary.FileWriter(output_dir, self.session.graph)
+        self.save_code_snapshot(output_dir)
 
         return s_t, a_t, r_t, r_obs, lstm_s_t, avg_reward, minimize, summaries
 
@@ -248,4 +252,12 @@ class A3CBrain(object):
         os.makedirs(tf_path)
         return tf_path
 
+    def save_code_snapshot(self, output_dir):
+        commit_hash = subprocess.check_output(["git", "log", "--pretty=%H", "-1"])
+        commit_hash = commit_hash.decode().replace('\n', '')
+        diff_filename = commit_hash + '.diff'
+        diff_path = os.path.join(output_dir, diff_filename)
+        diff_contents = subprocess.check_output(["git", "diff"])
+        with io.FileIO(diff_path, "w") as f:
+            f.write(diff_contents)
 

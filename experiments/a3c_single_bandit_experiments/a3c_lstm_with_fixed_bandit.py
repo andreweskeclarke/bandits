@@ -55,7 +55,7 @@ if __name__ == '__main__':
                 learning_rate=learning_rate,
                 n_look_ahead=n_look_ahead)
 
-    while True:
+    while n_total_training_episodes < 10000:
         t = training_time if n_total_training_episodes > 0 else 0
         brain, n_episodes, n_trials = a3c_experiments.run_training(
                 brain=brain,
